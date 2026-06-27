@@ -1,0 +1,13 @@
+# Issue / PR / コミットのタイトルに付ける許可カテゴリ。詳細は CONTRIBUTING.md を参照。
+# validate_pr.sh と validate_issue_title.sh が唯一の出どころとして参照する。複合は "/" でつなぐ（例: [App/Server]）。
+#
+# 注意: 各カテゴリ行にインラインコメント（# ...）を付けないこと。
+#       パーサが "- 名前" を抽出するため、行内に # を混ぜると名前が壊れる。
+categories:
+  - App
+  - Server
+  - Infra
+  - Data
+  - Docs
+  - CI/CD
+  - Chore
