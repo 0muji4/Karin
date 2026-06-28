@@ -19,6 +19,7 @@ import (
 	"github.com/0muji4/Karin/apps/backend/internal/moderation"
 	"github.com/0muji4/Karin/apps/backend/internal/postgres"
 	"github.com/0muji4/Karin/apps/backend/internal/record"
+	"github.com/0muji4/Karin/apps/backend/internal/report"
 )
 
 func main() {
@@ -52,6 +53,7 @@ func run(logger *slog.Logger) error {
 		Records: record.NewService(postgres.NewRecordRepo(pool)),
 		Cast:    exchange.NewCastService(postgres.NewRecordRepo(pool), moderation.AllPass{}, postgres.NewPoolRepo(pool)),
 		Inbox:   postgres.NewInboxRepo(pool),
+		Reports: report.NewService(moderation.AllPass{}, postgres.NewReportRepo(pool)),
 	})
 
 	srv := &http.Server{
