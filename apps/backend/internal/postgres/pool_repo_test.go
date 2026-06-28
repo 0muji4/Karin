@@ -9,6 +9,7 @@ import (
 	"github.com/0muji4/Karin/apps/backend/internal/db/sqlcdb"
 	"github.com/0muji4/Karin/apps/backend/internal/dbtest"
 	"github.com/0muji4/Karin/apps/backend/internal/exchange"
+	"github.com/0muji4/Karin/apps/backend/internal/moderation"
 	"github.com/0muji4/Karin/apps/backend/internal/postgres"
 )
 
@@ -124,4 +125,72 @@ func TestHoldForReview_保留と監査(t *testing.T) {
 	if pooled != 0 {
 		t.Errorf("保留なのに tanzaku が %d 件投入された", pooled)
 	}
+}
+
+// RecordRejected は配信しない確定判定を rejected として残し判定監査を書く。
+// 児童の場合は本文スナップショット付きの児童保全ホールドも同 tx で作る。配信もクレジットもしない。
+func TestRecordRejected_却下と監査と児童保全(t *testing.T) {
+	if testing.Short() {
+		t.Skip("結合テスト: Docker が要る（-short で除外）")
+	}
+	ctx := context.Background()
+	pool, _, terminate, err := dbtest.MigratedPool(ctx)
+	if err != nil {
+		t.Fatalf("PG 起動失敗: %v", err)
+	}
+	defer terminate()
+
+	q := sqlcdb.New(pool)
+	repo := postgres.NewPoolRepo(pool)
+
+	rejectedFor := func(t *testing.T, v moderation.Verdict) (uuid.UUID, uuid.UUID) {
+		t.Helper()
+		author, _ := q.CreateUser(ctx)
+		rec, err := q.CreateRecord(ctx, sqlcdb.CreateRecordParams{OwnerID: author.ID, Body: "本文", KoWritten: 33})
+		if err != nil {
+			t.Fatalf("記録作成: %v", err)
+		}
+		in := exchange.CastInput{AuthorID: author.ID, SourceRecordID: rec.ID, Body: "本文", Ko: 33}
+		if err := repo.RecordRejected(ctx, in, v, "却下理由"); err != nil {
+			t.Fatalf("RecordRejected(%s): %v", v.Label(), err)
+		}
+		var pendingID uuid.UUID
+		var status, verdict string
+		if err := pool.QueryRow(ctx,
+			`SELECT p.id, p.status, g.verdict FROM pending_submission p
+			   JOIN gate_verdict g ON g.subject_id = p.id
+			  WHERE p.author_id = $1`, author.ID).Scan(&pendingID, &status, &verdict); err != nil {
+			t.Fatalf("却下と監査が残っていない: %v", err)
+		}
+		if status != "rejected" || verdict != v.Label() {
+			t.Errorf("却下/監査が不正: status=%s verdict=%s", status, verdict)
+		}
+		var pooled int
+		_ = pool.QueryRow(ctx, `SELECT count(*) FROM tanzaku WHERE author_id = $1`, author.ID).Scan(&pooled)
+		if pooled != 0 {
+			t.Errorf("却下なのに tanzaku が %d 件投入された", pooled)
+		}
+		return author.ID, pendingID
+	}
+
+	t.Run("他者害は却下記録のみ・児童保全なし", func(t *testing.T) {
+		authorID, _ := rejectedFor(t, moderation.HarmToOthers)
+		var alerts int
+		_ = pool.QueryRow(ctx, `SELECT count(*) FROM child_safety_alert WHERE author_id = $1`, authorID).Scan(&alerts)
+		if alerts != 0 {
+			t.Errorf("他者害なのに児童保全が %d 件作られた", alerts)
+		}
+	})
+
+	t.Run("児童は本文付きの保全ホールドも作る", func(t *testing.T) {
+		authorID, _ := rejectedFor(t, moderation.Child)
+		var snap string
+		if err := pool.QueryRow(ctx,
+			`SELECT body_snapshot FROM child_safety_alert WHERE author_id = $1`, authorID).Scan(&snap); err != nil {
+			t.Fatalf("児童保全ホールドが作られていない: %v", err)
+		}
+		if snap != "本文" {
+			t.Errorf("保全の本文スナップショットが不正: %q", snap)
+		}
+	})
 }

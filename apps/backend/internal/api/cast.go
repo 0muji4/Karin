@@ -10,11 +10,18 @@ import (
 )
 
 type castResponse struct {
-	Status string `json:"status"`
+	Status  string       `json:"status"`
+	Support *supportInfo `json:"support,omitempty"`
 }
 
-// handleCast は本人の記録を風に乗せる（複製を未配信プールへ投入）。
-// 応答は一律で、プールしたか否かの判定結果は著者に見せない（M3 の四分岐に備える）。
+// supportInfo は危機（自傷）と判定したときにだけ本人へ返す支援先の案内。
+type supportInfo struct {
+	Message string `json:"message"`
+	URL     string `json:"url"`
+}
+
+// handleCast は本人の記録を風に乗せる。応答は一律で、プールしたか否かの判定結果は著者に見せない。
+// 例外として、危機（自傷）と判定したときだけ本人に支援先を案内する。
 func (s *Server) handleCast(w http.ResponseWriter, r *http.Request) {
 	p, ok := principalFrom(r.Context())
 	if !ok {
@@ -27,7 +34,8 @@ func (s *Server) handleCast(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.cast.CastToWind(r.Context(), p.UserID, id); err != nil {
+	outcome, err := s.cast.CastToWind(r.Context(), p.UserID, id)
+	if err != nil {
 		if errors.Is(err, record.ErrNotFound) {
 			writeError(w, s.logger, http.StatusNotFound, "not_found", "記録が見つからない")
 			return
@@ -36,5 +44,13 @@ func (s *Server) handleCast(w http.ResponseWriter, r *http.Request) {
 		writeError(w, s.logger, http.StatusInternalServerError, "internal", "風に乗せられなかった")
 		return
 	}
-	writeJSON(w, s.logger, http.StatusOK, castResponse{Status: "cast"})
+
+	resp := castResponse{Status: "cast"}
+	if outcome.ShowCrisisSupport {
+		resp.Support = &supportInfo{
+			Message: "つらい気持ちが続くときは、ひとりで抱えこまないでください。相談できる窓口があります。",
+			URL:     "https://www.mhlw.go.jp/mamorouyokokoro/",
+		}
+	}
+	writeJSON(w, s.logger, http.StatusOK, resp)
 }

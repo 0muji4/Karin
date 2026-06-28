@@ -18,6 +18,23 @@ const (
 	Child
 )
 
+// Label は判定の安定したラベルを返す。LLM 応答の解釈・DB の gate_verdict.verdict と一致させ、
+// 判定ラベルの出どころを一つにする。
+func (v Verdict) Label() string {
+	switch v {
+	case Safe:
+		return "safe"
+	case HarmToOthers:
+		return "harm"
+	case Crisis:
+		return "crisis"
+	case Child:
+		return "child"
+	default:
+		return "unknown"
+	}
+}
+
 // Decision は関門の判定。Reason はログ・監査用で、著者には見せない。
 type Decision struct {
 	Verdict  Verdict

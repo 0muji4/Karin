@@ -21,16 +21,23 @@ func NewCastService(records record.Repository, gate moderation.Moderator, effect
 	return &CastService{records: records, gate: gate, effects: effects}
 }
 
-// CastToWind は本人の記録 recordID を関門に通し、安全なら複製を未配信プールへ投入する。
+// CastOutcome は風に乗せた結果のうち、著者に返してよい情報。判定そのものは見せない。
+// 危機（自傷）と判定したときだけ、本人に支援先の案内を促す。
+type CastOutcome struct {
+	ShowCrisisSupport bool
+}
+
+// CastToWind は本人の記録 recordID を関門に通し、判定に応じて効果を適用する。
 // 元の記録は文箱に残る。記録が本人のものでなければ record.ErrNotFound を返す。
 //
-// 判定結果（プールしたか否か）は著者に見せない。安全な一枚は origin と不可分に投入し、
-// 配信で匿名化したあとも著者を辿れるようにする。
-// 他者害/危機/児童の効果適用と、判定が確定しなかったときの fail-closed 保留は後続 PR で足す。
-func (s *CastService) CastToWind(ctx context.Context, ownerID, recordID uuid.UUID) error {
+// 四分岐: 安全→origin と不可分にプール投入（配信で匿名化後も著者を辿れる）。他者害/児童→配信せず
+// rejected として記録（児童は保全ホールドも）。危機→配信しないが本人に支援先を案内。
+// 判定が確定しない→fail-closed で保留し復旧後に再判定。
+// 判定そのものは著者に見せないため、危機の支援案内を除き応答は一律になる。
+func (s *CastService) CastToWind(ctx context.Context, ownerID, recordID uuid.UUID) (CastOutcome, error) {
 	rec, err := s.records.Get(ctx, recordID, ownerID)
 	if err != nil {
-		return err
+		return CastOutcome{}, err
 	}
 	in := CastInput{
 		AuthorID:       ownerID,
@@ -42,13 +49,17 @@ func (s *CastService) CastToWind(ctx context.Context, ownerID, recordID uuid.UUI
 	dec, err := s.gate.Review(ctx, rec.Body)
 	if err != nil {
 		// fail-closed: 判定が確定しないものは配信せず保留し、復旧後に再判定する。
-		// 判定は著者に見せないので、保留も成功と同じ一律の応答になる。
-		return s.effects.HoldForReview(ctx, in, err.Error())
-	}
-	if dec.Verdict != moderation.Safe {
-		// 他者害/危機/児童の効果適用は後続 PR。現状は配信しない。
-		return nil
+		return CastOutcome{}, s.effects.HoldForReview(ctx, in, err.Error())
 	}
 
-	return s.effects.PoolSafe(ctx, in)
+	switch dec.Verdict {
+	case moderation.Safe:
+		return CastOutcome{}, s.effects.PoolSafe(ctx, in)
+	case moderation.Crisis:
+		// 配信しないが、本人にだけ支援先を案内する。
+		return CastOutcome{ShowCrisisSupport: true}, s.effects.RecordRejected(ctx, in, dec.Verdict, dec.Reason)
+	default:
+		// 他者害・児童は配信しない。応答は安全時と同じ一律（判定を見せない）。
+		return CastOutcome{}, s.effects.RecordRejected(ctx, in, dec.Verdict, dec.Reason)
+	}
 }

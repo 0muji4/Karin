@@ -10,6 +10,7 @@ import (
 
 	"github.com/0muji4/Karin/apps/backend/internal/db/sqlcdb"
 	"github.com/0muji4/Karin/apps/backend/internal/exchange"
+	"github.com/0muji4/Karin/apps/backend/internal/moderation"
 )
 
 // gate_verdict.subject_kind の値（DB の CHECK と一致）。保留や短冊など判定対象の種別を表す。
@@ -93,6 +94,51 @@ func (r *PoolRepo) HoldForReview(ctx context.Context, in exchange.CastInput, cau
 		Raw:         causeJSON(cause),
 	}); err != nil {
 		return fmt.Errorf("判定監査の記録に失敗: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("コミットに失敗: %w", err)
+	}
+	return nil
+}
+
+// RecordRejected は配信しないと確定した一枚を rejected として残し、判定監査を不可分に書く。
+// 児童の場合は児童保全のホールド（本文スナップショット）も同 tx で作る。配信もクレジット加算もしない。
+func (r *PoolRepo) RecordRejected(ctx context.Context, in exchange.CastInput, v moderation.Verdict, reason string) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("トランザクション開始に失敗: %w", err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck // Commit 済みなら no-op
+
+	q := sqlcdb.New(tx)
+	pendingID, err := q.CreatePendingSubmission(ctx, sqlcdb.CreatePendingSubmissionParams{
+		AuthorID:       in.AuthorID,
+		SourceRecordID: pgtype.UUID{Bytes: in.SourceRecordID, Valid: true},
+		Body:           in.Body,
+		KoWritten:      int16(in.Ko),
+	})
+	if err != nil {
+		return fmt.Errorf("却下の記録に失敗: %w", err)
+	}
+	if err := q.MarkPendingRejected(ctx, sqlcdb.MarkPendingRejectedParams{ID: pendingID, LastError: &reason}); err != nil {
+		return fmt.Errorf("却下状態への更新に失敗: %w", err)
+	}
+	if err := q.RecordGateVerdict(ctx, sqlcdb.RecordGateVerdictParams{
+		SubjectKind: subjectPending,
+		SubjectID:   pendingID,
+		Verdict:     v.Label(),
+		Raw:         causeJSON(reason),
+	}); err != nil {
+		return fmt.Errorf("判定監査の記録に失敗: %w", err)
+	}
+	if v == moderation.Child {
+		// 関門起点（tanzaku 不在・通報起点でない）の児童保全ホールド。匿名化後も本文を残す。
+		if err := q.CreateChildSafetyAlert(ctx, sqlcdb.CreateChildSafetyAlertParams{
+			AuthorID:     in.AuthorID,
+			BodySnapshot: in.Body,
+		}); err != nil {
+			return fmt.Errorf("児童保全ホールドの作成に失敗: %w", err)
+		}
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("コミットに失敗: %w", err)
