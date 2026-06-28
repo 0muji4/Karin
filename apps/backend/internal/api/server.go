@@ -52,8 +52,9 @@ func NewServer(logger *slog.Logger, deps Deps) *Server {
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 
-	// 認証不要: 稼働確認。
+	// 認証不要: 稼働確認・アカウント発行。
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
+	mux.HandleFunc("POST /accounts", s.handleCreateAccount)
 
 	// middleware は外側から: recover -> log -> mux。
 	var h http.Handler = mux
