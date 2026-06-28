@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/0muji4/Karin/apps/backend/internal/db/sqlcdb"
 	"github.com/0muji4/Karin/apps/backend/internal/ko"
 )
 
@@ -22,7 +21,7 @@ func (s *Server) handleTodayKo(w http.ResponseWriter, r *http.Request) {
 	now := time.Now()
 	n := ko.Number(now)
 
-	meta, err := sqlcdb.New(s.pool).GetKoReference(r.Context(), int16(n))
+	meta, err := s.ko.Get(r.Context(), n)
 	if err != nil {
 		s.logger.Error("候メタの取得に失敗", "ko", n, "error", err)
 		writeError(w, s.logger, http.StatusInternalServerError, "internal", "今日の候を取得できなかった")

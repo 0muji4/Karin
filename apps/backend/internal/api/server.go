@@ -5,9 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/jackc/pgx/v5/pgxpool"
-
 	"github.com/0muji4/Karin/apps/backend/internal/auth"
+	"github.com/0muji4/Karin/apps/backend/internal/ko"
 	"github.com/0muji4/Karin/apps/backend/internal/record"
 )
 
@@ -16,10 +15,10 @@ type Pinger interface {
 	Ping(ctx context.Context) error
 }
 
-// Deps は Server が必要とする協力者をまとめる。
+// Deps は Server が必要とする協力者（ポート）をまとめる。具体実装は cmd（合成ルート）で注入する。
 type Deps struct {
 	DB      Pinger          // /healthz の疎通確認
-	Pool    *pgxpool.Pool   // 候メタ（ko_reference）の参照に使う静的データ読み取り
+	Ko      ko.Catalog      // 候メタの読み取りポート
 	Auth    *auth.Service   // 匿名アカウントと認証
 	Records *record.Service // 文箱の読み書き
 }
@@ -28,7 +27,7 @@ type Deps struct {
 type Server struct {
 	logger  *slog.Logger
 	db      Pinger
-	pool    *pgxpool.Pool
+	ko      ko.Catalog
 	auth    *auth.Service
 	records *record.Service
 }
@@ -41,7 +40,7 @@ func NewServer(logger *slog.Logger, deps Deps) *Server {
 	return &Server{
 		logger:  logger,
 		db:      deps.DB,
-		pool:    deps.Pool,
+		ko:      deps.Ko,
 		auth:    deps.Auth,
 		records: deps.Records,
 	}

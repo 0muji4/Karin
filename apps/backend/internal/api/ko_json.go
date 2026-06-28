@@ -1,6 +1,6 @@
 package api
 
-import "github.com/0muji4/Karin/apps/backend/internal/db/sqlcdb"
+import "github.com/0muji4/Karin/apps/backend/internal/ko"
 
 // koJSON は候メタの API 表現。今日の候と文箱の候別表示で共有する。
 type koJSON struct {
@@ -12,13 +12,13 @@ type koJSON struct {
 	Season  string `json:"season"`
 }
 
-func toKoJSON(m sqlcdb.KoReference) koJSON {
+func toKoJSON(m ko.Meta) koJSON {
 	return koJSON{
-		Number:  int(m.Ko),
+		Number:  m.Number,
 		Name:    m.Name,
 		Kana:    m.Kana,
 		Meaning: m.Meaning,
-		Sekki:   int(m.Sekki),
+		Sekki:   m.Sekki,
 		Season:  m.Season,
 	}
 }

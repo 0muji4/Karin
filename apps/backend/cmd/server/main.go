@@ -15,6 +15,7 @@ import (
 	"github.com/0muji4/Karin/apps/backend/internal/auth"
 	"github.com/0muji4/Karin/apps/backend/internal/config"
 	"github.com/0muji4/Karin/apps/backend/internal/db"
+	"github.com/0muji4/Karin/apps/backend/internal/postgres"
 	"github.com/0muji4/Karin/apps/backend/internal/record"
 )
 
@@ -44,7 +45,7 @@ func run(logger *slog.Logger) error {
 
 	apiServer := api.NewServer(logger, api.Deps{
 		DB:      pool,
-		Pool:    pool,
+		Ko:      postgres.NewKoCatalog(pool),
 		Auth:    auth.NewService(pool),
 		Records: record.NewService(pool),
 	})
