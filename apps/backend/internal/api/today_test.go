@@ -20,19 +20,38 @@ func TestKoToday(t *testing.T) {
 		t.Fatalf("/ko/today = %d, want 200", rr.Code)
 	}
 	var resp struct {
-		Date string `json:"date"`
-		Ko   struct {
+		Date      string `json:"date"`
+		WafuMonth struct {
+			Name string `json:"name"`
+			Kana string `json:"kana"`
+		} `json:"wafu_month"`
+		Sekki struct {
+			Number int    `json:"number"`
+			Name   string `json:"name"`
+			Kana   string `json:"kana"`
+		} `json:"sekki"`
+		Ko struct {
 			Number int    `json:"number"`
 			Name   string `json:"name"`
 			Season string `json:"season"`
 		} `json:"ko"`
 	}
 	mustJSON(t, rr.Body.Bytes(), &resp)
-	if want := ko.Number(time.Now()); resp.Ko.Number != want {
-		t.Errorf("今日の候 = %d, want %d", resp.Ko.Number, want)
+
+	n := ko.Number(time.Now())
+	if resp.Ko.Number != n {
+		t.Errorf("今日の候 = %d, want %d", resp.Ko.Number, n)
 	}
 	if resp.Ko.Name == "" || resp.Ko.Season == "" {
 		t.Errorf("候メタが空: %+v", resp.Ko)
+	}
+	// 節気は候から導いたものと一致し、名称・読みが入る。
+	wantSekki := ko.Sekki(ko.SekkiOf(n))
+	if resp.Sekki.Number != wantSekki.Number || resp.Sekki.Name != wantSekki.Name || resp.Sekki.Name == "" {
+		t.Errorf("節気 = %+v, want %+v", resp.Sekki, wantSekki)
+	}
+	if resp.WafuMonth.Name == "" || resp.WafuMonth.Kana == "" {
+		t.Errorf("和風月名が空: %+v", resp.WafuMonth)
 	}
 	if resp.Date == "" {
 		t.Errorf("日付が空")
