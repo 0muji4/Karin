@@ -1,0 +1,48 @@
+# Render Blueprint（記録 MVP / Phase 1）。
+#
+# 前提: マネージド PostgreSQL は外部 Neon（DATABASE_URL を Secret で渡す）。
+#   理由は DD 相当の判断: 計算ホストとの結合が弱く脱ロックイン・可搬性に効き、
+#   ブランチでマイグレーション検証が安全なため（夏鈴の低・間欠トラフィックでコールドスタートは許容）。
+#   Render Postgres を使う場合は databases: ブロックを足し、DATABASE_URL を fromDatabase 参照に変える。
+#
+# 安全ゲート: 交換を実ユーザーへ開くのは M3（関門）導入後。それまでは下の matcher cron を
+#   作成しない／スケジュールを止める（記録だけ公開する Phase 1 運用）。
+#
+# 注意: Render の Blueprint 仕様は変わりうる。デプロイ時に最新仕様で要検証。
+
+services:
+  - type: web
+    name: karin-server
+    runtime: docker
+    rootDir: apps/backend
+    dockerfilePath: ./Dockerfile
+    dockerCommand: /usr/local/bin/server
+    region: singapore # 日本に最も近いリージョン
+    plan: free
+    healthCheckPath: /healthz
+    # 新版を公開する前にマイグレーションを適用する。
+    preDeployCommand: /usr/local/bin/migrate up
+    envVars:
+      - key: DATABASE_URL # Neon の接続文字列（sslmode=require 推奨）。Secret として手動設定。
+        sync: false
+      - key: KARIN_HTTP_ADDR # Render は PORT=10000 での待受を期待する。
+        value: ":10000"
+      - key: KARIN_KO_TTL
+        value: "6"
+
+  # 日次マッチャ。M3 導入までは作成しない／スケジュールを止める（記録 MVP は交換を開かない）。
+  # Render の Cron Job は有料プラン。
+  - type: cron
+    name: karin-matcher
+    runtime: docker
+    rootDir: apps/backend
+    dockerfilePath: ./Dockerfile
+    dockerCommand: /usr/local/bin/matcher
+    region: singapore
+    plan: starter
+    schedule: "0 18 * * *" # 毎日 18:00 UTC = 03:00 JST
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: KARIN_KO_TTL
+        value: "6"
