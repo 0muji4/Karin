@@ -7,3 +7,9 @@ RETURNING id, created_at, role, reputation, suspended_at;
 SELECT id, created_at, role, reputation, suspended_at
 FROM users
 WHERE id = $1;
+
+-- name: AdjustReputation :exec
+-- 通報の決着に応じて評判を増減する（別表にせず集約列で持つ）。
+UPDATE users
+SET reputation = reputation + $2
+WHERE id = $1;
