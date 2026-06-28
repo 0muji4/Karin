@@ -28,3 +28,90 @@ func (q *Queries) CreateDelivery(ctx context.Context, arg CreateDeliveryParams) 
 	_, err := q.db.Exec(ctx, createDelivery, arg.TanzakuID, arg.RecipientID, arg.DeliveredOn)
 	return err
 }
+
+const getReceivedForKeep = `-- name: GetReceivedForKeep :one
+SELECT t.body, t.ko_written, d.kept_at
+FROM delivery d
+JOIN tanzaku t ON t.id = d.tanzaku_id
+WHERE d.tanzaku_id = $1 AND d.recipient_id = $2
+`
+
+type GetReceivedForKeepParams struct {
+	TanzakuID   uuid.UUID
+	RecipientID uuid.UUID
+}
+
+type GetReceivedForKeepRow struct {
+	Body      string
+	KoWritten int16
+	KeptAt    pgtype.Timestamptz
+}
+
+// 文箱にしまう前に、その一枚が本人宛に配信されたものか確認し、本文・候・既存のしまい時刻を引く。
+func (q *Queries) GetReceivedForKeep(ctx context.Context, arg GetReceivedForKeepParams) (GetReceivedForKeepRow, error) {
+	row := q.db.QueryRow(ctx, getReceivedForKeep, arg.TanzakuID, arg.RecipientID)
+	var i GetReceivedForKeepRow
+	err := row.Scan(&i.Body, &i.KoWritten, &i.KeptAt)
+	return i, err
+}
+
+const listReceivedByRecipient = `-- name: ListReceivedByRecipient :many
+SELECT t.id, t.body, t.ko_written, t.is_official, d.delivered_on, d.kept_at
+FROM delivery d
+JOIN tanzaku t ON t.id = d.tanzaku_id
+WHERE d.recipient_id = $1
+ORDER BY d.delivered_on DESC, t.id
+`
+
+type ListReceivedByRecipientRow struct {
+	ID          uuid.UUID
+	Body        string
+	KoWritten   int16
+	IsOfficial  bool
+	DeliveredOn pgtype.Date
+	KeptAt      pgtype.Timestamptz
+}
+
+// 受け手が受信した一枚を新しい順に返す。author は渡さない（匿名・配信時に NULL 化済み）。
+func (q *Queries) ListReceivedByRecipient(ctx context.Context, recipientID uuid.UUID) ([]ListReceivedByRecipientRow, error) {
+	rows, err := q.db.Query(ctx, listReceivedByRecipient, recipientID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListReceivedByRecipientRow
+	for rows.Next() {
+		var i ListReceivedByRecipientRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Body,
+			&i.KoWritten,
+			&i.IsOfficial,
+			&i.DeliveredOn,
+			&i.KeptAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const markKept = `-- name: MarkKept :exec
+UPDATE delivery SET kept_at = now()
+WHERE tanzaku_id = $1 AND recipient_id = $2 AND kept_at IS NULL
+`
+
+type MarkKeptParams struct {
+	TanzakuID   uuid.UUID
+	RecipientID uuid.UUID
+}
+
+// 受信した一枚を文箱にしまった時刻を記録する（未しまいのときだけ）。
+func (q *Queries) MarkKept(ctx context.Context, arg MarkKeptParams) error {
+	_, err := q.db.Exec(ctx, markKept, arg.TanzakuID, arg.RecipientID)
+	return err
+}

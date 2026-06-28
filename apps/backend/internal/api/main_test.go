@@ -54,6 +54,7 @@ func handlerForTest() http.Handler {
 		Auth:    auth.NewService(postgres.NewAuthRepo(testPool)),
 		Records: record.NewService(postgres.NewRecordRepo(testPool)),
 		Cast:    exchange.NewCastService(postgres.NewRecordRepo(testPool), moderation.AllPass{}, postgres.NewPoolRepo(testPool)),
+		Inbox:   postgres.NewInboxRepo(testPool),
 	}).Handler()
 }
 
