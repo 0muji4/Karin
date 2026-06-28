@@ -24,4 +24,9 @@ type GateEffects interface {
 	// 著者のクレジット +1 を不可分に書く。配信時に author_id を NULL 化しても
 	// origin から著者を辿れる不変条件を、ここで保証する（通報→評判・児童保全の根拠）。
 	PoolSafe(ctx context.Context, in CastInput) error
+
+	// HoldForReview は判定が安全と確定しなかった一枚を配信せず保留する（fail-closed）。
+	// 本文をスナップショットして awaiting で保持し、復旧後にマッチャが再判定する。
+	// cause は保留に至った原因（LLM の呼び出し/解釈エラー等）で、監査にだけ残し著者には見せない。
+	HoldForReview(ctx context.Context, in CastInput, cause string) error
 }

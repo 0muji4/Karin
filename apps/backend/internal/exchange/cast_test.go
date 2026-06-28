@@ -33,14 +33,30 @@ func (f *fakeRecords) Get(_ context.Context, id, ownerID uuid.UUID) (record.Reco
 
 // fakeEffects は exchange.GateEffects の DB 不要なテスト実装。
 type fakeEffects struct {
-	pooled bool
-	got    exchange.CastInput
+	pooled    bool
+	got       exchange.CastInput
+	held      bool
+	heldCause string
 }
 
 func (f *fakeEffects) PoolSafe(_ context.Context, in exchange.CastInput) error {
 	f.pooled = true
 	f.got = in
 	return nil
+}
+
+func (f *fakeEffects) HoldForReview(_ context.Context, in exchange.CastInput, cause string) error {
+	f.held = true
+	f.got = in
+	f.heldCause = cause
+	return nil
+}
+
+// errModerator は常に判定エラーを返す関門スタブ（fail-closed の検証用）。
+type errModerator struct{ err error }
+
+func (m errModerator) Review(context.Context, string) (moderation.Decision, error) {
+	return moderation.Decision{}, m.err
 }
 
 // 安全な記録は、本人のものとして読まれ、複製がプールへ投入される。
@@ -65,6 +81,27 @@ func TestCastToWind_PoolsCopy(t *testing.T) {
 	}
 	if effects.got.SourceRecordID != recID {
 		t.Errorf("origin に残す由来が不正: SourceRecordID=%v, want %v", effects.got.SourceRecordID, recID)
+	}
+}
+
+// 判定が確定しない（関門がエラー）ときは配信せず保留する（fail-closed）。
+// 判定は著者に見せないので、保留は成功と同じ一律の応答になる（エラーにしない）。
+func TestCastToWind_GateErrorHolds(t *testing.T) {
+	recs := &fakeRecords{rec: record.Record{Body: "曖昧な一文", KoWritten: 20}}
+	effects := &fakeEffects{}
+	svc := exchange.NewCastService(recs, errModerator{err: errors.New("llm timeout")}, effects)
+
+	if err := svc.CastToWind(context.Background(), uuid.New(), uuid.New()); err != nil {
+		t.Fatalf("保留時はエラーにしない: %v", err)
+	}
+	if effects.pooled {
+		t.Error("判定エラーなのにプールへ投入された（fail-closed が崩れる）")
+	}
+	if !effects.held {
+		t.Fatal("判定エラーなのに保留されていない")
+	}
+	if effects.heldCause == "" {
+		t.Error("保留原因が監査に渡っていない")
 	}
 }
 

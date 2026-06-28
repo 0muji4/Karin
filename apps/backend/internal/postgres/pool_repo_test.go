@@ -65,3 +65,63 @@ func TestPoolSafe_書き込みは不可分(t *testing.T) {
 		t.Errorf("クレジット = %d, want 1", credits)
 	}
 }
+
+// HoldForReview は判定が確定しない一枚を awaiting で保留し、llm_error の判定監査を不可分に残す。
+// 配信せず、クレジットも付けない（fail-closed）。
+func TestHoldForReview_保留と監査(t *testing.T) {
+	if testing.Short() {
+		t.Skip("結合テスト: Docker が要る（-short で除外）")
+	}
+	ctx := context.Background()
+	pool, _, terminate, err := dbtest.MigratedPool(ctx)
+	if err != nil {
+		t.Fatalf("PG 起動失敗: %v", err)
+	}
+	defer terminate()
+
+	q := sqlcdb.New(pool)
+	author, _ := q.CreateUser(ctx)
+	rec, err := q.CreateRecord(ctx, sqlcdb.CreateRecordParams{OwnerID: author.ID, Body: "判定保留の本文", KoWritten: 33})
+	if err != nil {
+		t.Fatalf("記録作成: %v", err)
+	}
+
+	repo := postgres.NewPoolRepo(pool)
+	in := exchange.CastInput{AuthorID: author.ID, SourceRecordID: rec.ID, Body: "判定保留の本文", Ko: 33}
+	if err := repo.HoldForReview(ctx, in, "llm timeout"); err != nil {
+		t.Fatalf("HoldForReview: %v", err)
+	}
+
+	// 1) pending_submission が awaiting・スナップショット本文・原因を保持して作られる。
+	var pendingID uuid.UUID
+	var status, body string
+	var lastErr *string
+	if err := pool.QueryRow(ctx,
+		`SELECT id, status, body, last_error FROM pending_submission WHERE author_id = $1`, author.ID).
+		Scan(&pendingID, &status, &body, &lastErr); err != nil {
+		t.Fatalf("保留が作られていない: %v", err)
+	}
+	if status != "awaiting" || body != "判定保留の本文" || lastErr == nil || *lastErr != "llm timeout" {
+		t.Errorf("保留の中身が不正: status=%s body=%q lastErr=%v", status, body, lastErr)
+	}
+
+	// 2) gate_verdict が pending/llm_error として、同 tx で残る。
+	var verdict, kind string
+	if err := pool.QueryRow(ctx,
+		`SELECT verdict, subject_kind FROM gate_verdict WHERE subject_id = $1`, pendingID).
+		Scan(&verdict, &kind); err != nil {
+		t.Fatalf("判定監査が残っていない（不可分性が崩れている）: %v", err)
+	}
+	if verdict != "llm_error" || kind != "pending" {
+		t.Errorf("判定監査が不正: verdict=%s kind=%s", verdict, kind)
+	}
+
+	// 3) 配信用プールには出ていない・クレジットも付かない（fail-closed）。
+	var pooled int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM tanzaku WHERE author_id = $1`, author.ID).Scan(&pooled); err != nil {
+		t.Fatalf("tanzaku 数の取得: %v", err)
+	}
+	if pooled != 0 {
+		t.Errorf("保留なのに tanzaku が %d 件投入された", pooled)
+	}
+}
