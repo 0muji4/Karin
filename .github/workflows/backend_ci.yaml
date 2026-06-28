@@ -30,5 +30,17 @@ jobs:
         run: go vet ./...
       - name: go build
         run: go build ./...
+      # 結合テストの前に PostgreSQL イメージを事前取得する。testcontainers は
+      # ローカルにあれば pull しないため、Docker Hub の一時的なタイムアウトで
+      # テストが落ちるのを防ぐ（リトライ付き）。
+      - name: Pre-pull PostgreSQL image (retry against transient registry timeouts)
+        working-directory: ${{ github.workspace }}
+        run: |
+          for i in 1 2 3 4 5; do
+            docker pull postgres:18 && break
+            echo "::warning::postgres:18 の取得に失敗（試行 ${i}/5）。再試行します"
+            sleep 10
+          done
+          docker image inspect postgres:18 >/dev/null
       - name: go test (PostgreSQL 18 via testcontainers)
         run: go test ./...
