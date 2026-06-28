@@ -1,0 +1,110 @@
+package config
+
+import (
+	"errors"
+	"testing"
+)
+
+// envOf は map ベースの lookup を作る。os.Environ を汚さずにテストできる。
+func envOf(m map[string]string) func(string) (string, bool) {
+	return func(k string) (string, bool) {
+		v, ok := m[k]
+		return v, ok
+	}
+}
+
+func TestLoad_minimal(t *testing.T) {
+	cfg, err := Load(envOf(map[string]string{
+		"DATABASE_URL": "postgres://localhost/karin",
+	}))
+	if err != nil {
+		t.Fatalf("予期しないエラー: %v", err)
+	}
+	if cfg.DatabaseURL != "postgres://localhost/karin" {
+		t.Errorf("DatabaseURL = %q", cfg.DatabaseURL)
+	}
+	if cfg.HTTPAddr != defaultHTTPAddr {
+		t.Errorf("HTTPAddr 既定値 = %q, want %q", cfg.HTTPAddr, defaultHTTPAddr)
+	}
+	if cfg.KoTTL != defaultKoTTL {
+		t.Errorf("KoTTL 既定値 = %d, want %d", cfg.KoTTL, defaultKoTTL)
+	}
+}
+
+func TestLoad_missingDatabaseURL(t *testing.T) {
+	_, err := Load(envOf(map[string]string{}))
+	if !errors.Is(err, ErrMissing) {
+		t.Fatalf("DATABASE_URL 欠落で ErrMissing を期待: %v", err)
+	}
+}
+
+func TestLoad_koTTL(t *testing.T) {
+	tests := []struct {
+		name    string
+		val     string
+		want    int
+		wantErr bool
+	}{
+		{"正の値", "10", 10, false},
+		{"非整数", "abc", 0, true},
+		{"ゼロは不可", "0", 0, true},
+		{"負は不可", "-1", 0, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg, err := Load(envOf(map[string]string{
+				"DATABASE_URL": "postgres://localhost/karin",
+				"KARIN_KO_TTL": tt.val,
+			}))
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("エラーを期待したが nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("予期しないエラー: %v", err)
+			}
+			if cfg.KoTTL != tt.want {
+				t.Errorf("KoTTL = %d, want %d", cfg.KoTTL, tt.want)
+			}
+		})
+	}
+}
+
+func TestLoad_llmRequiresKeyAndModel(t *testing.T) {
+	// provider を指定したら key/model も必須。
+	_, err := Load(envOf(map[string]string{
+		"DATABASE_URL":       "postgres://localhost/karin",
+		"KARIN_LLM_PROVIDER": "anthropic",
+	}))
+	if !errors.Is(err, ErrMissing) {
+		t.Fatalf("provider のみで ErrMissing を期待: %v", err)
+	}
+
+	cfg, err := Load(envOf(map[string]string{
+		"DATABASE_URL":       "postgres://localhost/karin",
+		"KARIN_LLM_PROVIDER": "anthropic",
+		"KARIN_LLM_API_KEY":  "sk-xxx",
+		"KARIN_LLM_MODEL":    "claude-x",
+	}))
+	if err != nil {
+		t.Fatalf("予期しないエラー: %v", err)
+	}
+	if cfg.LLM.Provider != "anthropic" || cfg.LLM.Model != "claude-x" {
+		t.Errorf("LLM 設定が読めていない: %+v", cfg.LLM)
+	}
+}
+
+func TestLoad_llmAbsentIsOK(t *testing.T) {
+	// LLM 未設定でも記録・交換の機能は動くべき。
+	cfg, err := Load(envOf(map[string]string{
+		"DATABASE_URL": "postgres://localhost/karin",
+	}))
+	if err != nil {
+		t.Fatalf("LLM 未設定でエラーになった: %v", err)
+	}
+	if cfg.LLM.Provider != "" {
+		t.Errorf("LLM.Provider は空のはず: %q", cfg.LLM.Provider)
+	}
+}
