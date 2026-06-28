@@ -64,15 +64,17 @@ func (s *Server) handleCreateRecord(w http.ResponseWriter, r *http.Request) {
 }
 
 type boxGroup struct {
-	Ko      koJSON       `json:"ko"`
-	Records []recordJSON `json:"records"`
+	WafuMonth wafuMonthJSON `json:"wafu_month"`
+	Sekki     sekkiJSON     `json:"sekki"`
+	Records   []recordJSON  `json:"records"`
 }
 
 type boxResponse struct {
 	Groups []boxGroup `json:"groups"`
 }
 
-// handleListBox は本人の文箱を候別にまとめて返す（候昇順、各候内は新しい順）。
+// handleListBox は本人の文箱を二十四節気ごとにまとめて返す（節気昇順、各節気内は新しい順）。
+// 節気名・和風月名は ko の暦知識から得る（候メタの DB 参照は不要）。
 func (s *Server) handleListBox(w http.ResponseWriter, r *http.Request) {
 	p, ok := principalFrom(r.Context())
 	if !ok {
@@ -87,44 +89,22 @@ func (s *Server) handleListBox(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	metaByKo, err := s.koMetaMap(r)
-	if err != nil {
-		s.logger.Error("候メタの取得に失敗", "error", err)
-		writeError(w, s.logger, http.StatusInternalServerError, "internal", "文箱を取得できなかった")
-		return
-	}
-
-	// recs は候昇順に並んでいるので、候が変わる境目でグループを切る。
+	// recs は候昇順に並ぶ＝節気昇順。節気が変わる境目でグループを切る。
 	groups := make([]boxGroup, 0)
 	for i := 0; i < len(recs); {
-		koNum := recs[i].KoWritten
-		g := boxGroup{Ko: koJSONFor(koNum, metaByKo), Records: []recordJSON{}}
-		for i < len(recs) && recs[i].KoWritten == koNum {
+		sek := ko.SekkiOf(recs[i].KoWritten)
+		meta := ko.Sekki(sek)
+		wm := ko.WafuMonthOf(recs[i].CreatedAt)
+		g := boxGroup{
+			WafuMonth: wafuMonthJSON{Name: wm.Name, Kana: wm.Kana},
+			Sekki:     sekkiJSON{Number: meta.Number, Name: meta.Name, Kana: meta.Kana},
+			Records:   []recordJSON{},
+		}
+		for i < len(recs) && ko.SekkiOf(recs[i].KoWritten) == sek {
 			g.Records = append(g.Records, toRecordJSON(recs[i]))
 			i++
 		}
 		groups = append(groups, g)
 	}
 	writeJSON(w, s.logger, http.StatusOK, boxResponse{Groups: groups})
-}
-
-// koMetaMap は全候のメタを番号引きの map で返す。
-func (s *Server) koMetaMap(r *http.Request) (map[int]ko.Meta, error) {
-	metas, err := s.ko.List(r.Context())
-	if err != nil {
-		return nil, err
-	}
-	m := make(map[int]ko.Meta, len(metas))
-	for _, meta := range metas {
-		m[meta.Number] = meta
-	}
-	return m, nil
-}
-
-// koJSONFor はメタがあれば埋め、無ければ番号だけ返す。
-func koJSONFor(koNum int, metaByKo map[int]ko.Meta) koJSON {
-	if m, ok := metaByKo[koNum]; ok {
-		return toKoJSON(m)
-	}
-	return koJSON{Number: koNum}
 }
