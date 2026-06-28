@@ -23,7 +23,8 @@ FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=build /out/server /out/matcher /out/migrate /usr/local/bin/
 USER nonroot:nonroot
 EXPOSE 8080
-# 既定は API サーバ。用途で上書きする:
-#   migrate up   … デプロイ前のマイグレーション
-#   matcher      … 日次マッチング（cron）
-ENTRYPOINT ["/usr/local/bin/server"]
+# 既定は API サーバ。ENTRYPOINT ではなく CMD にして、用途で command を完全に置き換えられるようにする
+# （compose の command や Render の dockerCommand で matcher/migrate に切り替えるため）:
+#   /usr/local/bin/migrate up   … デプロイ前のマイグレーション
+#   /usr/local/bin/matcher      … 日次マッチング（cron）
+CMD ["/usr/local/bin/server"]
