@@ -46,7 +46,7 @@ func run(logger *slog.Logger) error {
 	apiServer := api.NewServer(logger, api.Deps{
 		DB:      pool,
 		Ko:      postgres.NewKoCatalog(pool),
-		Auth:    auth.NewService(pool),
+		Auth:    auth.NewService(postgres.NewAuthRepo(pool)),
 		Records: record.NewService(postgres.NewRecordRepo(pool)),
 	})
 

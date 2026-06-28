@@ -7,6 +7,7 @@ import (
 
 	"github.com/0muji4/Karin/apps/backend/internal/auth"
 	"github.com/0muji4/Karin/apps/backend/internal/dbtest"
+	"github.com/0muji4/Karin/apps/backend/internal/postgres"
 )
 
 func TestAuth_CreateAndAuthenticate(t *testing.T) {
@@ -19,7 +20,7 @@ func TestAuth_CreateAndAuthenticate(t *testing.T) {
 		t.Fatalf("PG 起動失敗: %v", err)
 	}
 	defer terminate()
-	svc := auth.NewService(pool)
+	svc := auth.NewService(postgres.NewAuthRepo(pool))
 
 	// 発行したトークンで認証でき、Principal が一致する。
 	uid, token, err := svc.CreateAccount(ctx)

@@ -1,5 +1,6 @@
-// Package auth は匿名アカウントと Bearer トークン認証を担う。
-// アカウントに個人情報を紐づけない。トークンは平文を保存せず hash だけを持つ。
+// Package auth は匿名アカウントと Bearer トークン認証のユースケース・ドメインを担う。
+// アカウントに個人情報を紐づけない。トークンは平文を保存せず hash だけを扱う。
+// 永続化は Repository ポートに委ね、この層は具体 DB を知らない（依存性ルール）。
 package auth
 
 import (
@@ -11,10 +12,6 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
-
-	"github.com/0muji4/Karin/apps/backend/internal/db/sqlcdb"
 )
 
 // ErrUnauthorized はトークンが無効・未知のときに返る。
@@ -30,61 +27,51 @@ type Principal struct {
 	Suspended bool
 }
 
-// Service は匿名アカウントの発行と認証を提供する。
-type Service struct {
-	pool *pgxpool.Pool
+// Repository はアカウントとトークンの永続化ポート。
+// CreateAccountWithToken はアカウント作成とトークン保存をひとつの不可分な操作として行う。
+// FindByActiveToken は失効していないトークンの所有者を返し、無ければ ErrUnauthorized を返す。
+type Repository interface {
+	CreateAccountWithToken(ctx context.Context, tokenHash []byte) (uuid.UUID, error)
+	FindByActiveToken(ctx context.Context, tokenHash []byte) (Principal, error)
+	TouchToken(ctx context.Context, tokenHash []byte) error
 }
 
-// NewService は接続プールから Service を作る。
-func NewService(pool *pgxpool.Pool) *Service {
-	return &Service{pool: pool}
+// Service は匿名アカウントの発行と認証ユースケース。
+type Service struct {
+	repo Repository
+}
+
+// NewService は Repository ポートから Service を作る。
+func NewService(repo Repository) *Service {
+	return &Service{repo: repo}
 }
 
 // CreateAccount は匿名アカウントを 1 つ作り、生のトークンを 1 度だけ返す。
-// ユーザー行とトークン行をひとつのトランザクションで作る（中途半端な状態を残さない）。
 func (s *Service) CreateAccount(ctx context.Context) (userID uuid.UUID, token string, err error) {
 	token, hash, err := newToken()
 	if err != nil {
 		return uuid.Nil, "", fmt.Errorf("トークン生成に失敗: %w", err)
 	}
-
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return uuid.Nil, "", fmt.Errorf("トランザクション開始に失敗: %w", err)
-	}
-	defer tx.Rollback(ctx) //nolint:errcheck // Commit 済みなら no-op
-
-	q := sqlcdb.New(tx)
-	u, err := q.CreateUser(ctx)
+	userID, err = s.repo.CreateAccountWithToken(ctx, hash)
 	if err != nil {
 		return uuid.Nil, "", fmt.Errorf("アカウント作成に失敗: %w", err)
 	}
-	if _, err := q.CreateAuthToken(ctx, sqlcdb.CreateAuthTokenParams{UserID: u.ID, TokenHash: hash}); err != nil {
-		return uuid.Nil, "", fmt.Errorf("トークン保存に失敗: %w", err)
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return uuid.Nil, "", fmt.Errorf("コミットに失敗: %w", err)
-	}
-	return u.ID, token, nil
+	return userID, token, nil
 }
 
-// Authenticate は提示トークンから Principal を返す。未知・失効なら ErrUnauthorized。
+// Authenticate は提示トークンから Principal を返す。未知・失効・空なら ErrUnauthorized。
 func (s *Service) Authenticate(ctx context.Context, token string) (Principal, error) {
 	if token == "" {
 		return Principal{}, ErrUnauthorized
 	}
 	hash := hashToken(token)
-	q := sqlcdb.New(s.pool)
-	row, err := q.GetActiveUserByTokenHash(ctx, hash)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Principal{}, ErrUnauthorized
-	}
+	p, err := s.repo.FindByActiveToken(ctx, hash)
 	if err != nil {
-		return Principal{}, fmt.Errorf("トークン照合に失敗: %w", err)
+		return Principal{}, err
 	}
 	// 最終利用時刻の更新は best-effort。失敗しても認証自体は通す。
-	_ = q.TouchAuthToken(ctx, hash)
-	return Principal{UserID: row.ID, Role: row.Role, Suspended: row.SuspendedAt.Valid}, nil
+	_ = s.repo.TouchToken(ctx, hash)
+	return p, nil
 }
 
 // newToken は乱数トークン（base64url 文字列）とその SHA-256 hash を返す。
