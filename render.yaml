@@ -5,10 +5,17 @@
 #   ブランチでマイグレーション検証が安全なため（夏鈴の低・間欠トラフィックでコールドスタートは許容）。
 #   Render Postgres を使う場合は databases: ブロックを足し、DATABASE_URL を fromDatabase 参照に変える。
 #
-# 安全ゲート: 交換を実ユーザーへ開くのは M3（関門）導入後。それまでは下の matcher cron を
-#   作成しない／スケジュールを止める（記録だけ公開する Phase 1 運用）。
+# 関門(モデレーション): 出口の安全判定は実装済み。下の KARIN_LLM_* を設定すると Vertex AI で動き、
+#   未設定なら AllPass（全通過）で起動する。交換を実ユーザーへ開くときは、関門を有効化し、
+#   matcher cron を作成・有効化する（Phase 1=記録のみなら関門未設定・cron 停止のままでよい）。
 #
 # 注意: Render の Blueprint 仕様は変わりうる。デプロイ時に最新仕様で要検証。
+#
+# Vertex AI の有効化手順（server・matcher 共通）:
+#   1) GCP のサービスアカウント JSON を Render の Secret File としてアップロードする
+#      （例: /etc/secrets/gcp-sa.json）。Vertex は ADC で認証し、データは学習に使われない。
+#   2) 下の KARIN_LLM_* と GOOGLE_APPLICATION_CREDENTIALS を設定する。
+#   3) KARIN_LLM_PROVIDER を "vertex" にすると、起動時に project/location/model が必須になる。
 
 services:
   - type: web
@@ -29,9 +36,20 @@ services:
         value: ":10000"
       - key: KARIN_KO_TTL
         value: "6"
+      # 関門。未設定なら AllPass で起動する（Phase 1=記録のみ向け）。有効化は上の手順を参照。
+      - key: KARIN_LLM_PROVIDER # 有効化するなら "vertex"
+        sync: false
+      - key: KARIN_LLM_MODEL # 例: gemini-2.5-flash（利用可能なモデル ID に合わせる）
+        sync: false
+      - key: KARIN_LLM_PROJECT # GCP プロジェクト ID
+        sync: false
+      - key: KARIN_LLM_LOCATION # 例: asia-northeast1（東京）
+        sync: false
+      - key: GOOGLE_APPLICATION_CREDENTIALS # 例: /etc/secrets/gcp-sa.json（Secret File のパス）
+        sync: false
 
-  # 日次マッチャ。M3 導入までは作成しない／スケジュールを止める（記録 MVP は交換を開かない）。
-  # Render の Cron Job は有料プラン。
+  # 日次マッチャ。交換を開くまでは作成しない／スケジュールを止める（記録のみの運用）。
+  # 保留の再判定で関門を使うため、有効化時は下の KARIN_LLM_* も設定する。Render の Cron Job は有料プラン。
   - type: cron
     name: karin-matcher
     runtime: docker
@@ -46,3 +64,14 @@ services:
         sync: false
       - key: KARIN_KO_TTL
         value: "6"
+      # 保留の再判定で関門を使う。未設定なら AllPass。server と同じ値を設定する。
+      - key: KARIN_LLM_PROVIDER
+        sync: false
+      - key: KARIN_LLM_MODEL
+        sync: false
+      - key: KARIN_LLM_PROJECT
+        sync: false
+      - key: KARIN_LLM_LOCATION
+        sync: false
+      - key: GOOGLE_APPLICATION_CREDENTIALS
+        sync: false
