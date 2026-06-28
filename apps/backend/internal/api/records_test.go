@@ -18,14 +18,15 @@ type recordResp struct {
 
 type boxResp struct {
 	Groups []struct {
-		Ko struct {
-			Number  int    `json:"number"`
-			Name    string `json:"name"`
-			Kana    string `json:"kana"`
-			Meaning string `json:"meaning"`
-			Sekki   int    `json:"sekki"`
-			Season  string `json:"season"`
-		} `json:"ko"`
+		WafuMonth struct {
+			Name string `json:"name"`
+			Kana string `json:"kana"`
+		} `json:"wafu_month"`
+		Sekki struct {
+			Number int    `json:"number"`
+			Name   string `json:"name"`
+			Kana   string `json:"kana"`
+		} `json:"sekki"`
 		Records []recordResp `json:"records"`
 	} `json:"groups"`
 }
@@ -54,13 +55,14 @@ func TestBox_OwnerOnly(t *testing.T) {
 	}
 	mustJSON(t, rr.Body.Bytes(), &boxA)
 	if len(boxA.Groups) != 2 {
-		t.Fatalf("A の文箱グループ数 = %d, want 2", len(boxA.Groups))
+		t.Fatalf("A の文箱グループ数 = %d, want 2（候10=春分・候29=夏至）", len(boxA.Groups))
 	}
-	if boxA.Groups[0].Ko.Number != 10 || boxA.Groups[1].Ko.Number != 29 {
-		t.Errorf("候の並びが昇順でない: %d, %d", boxA.Groups[0].Ko.Number, boxA.Groups[1].Ko.Number)
+	// 節気昇順で並び、節気名が付くこと（春分=4 → 夏至=10）。
+	if boxA.Groups[0].Sekki.Number != 4 || boxA.Groups[1].Sekki.Number != 10 {
+		t.Errorf("節気の並びが昇順でない: %d, %d", boxA.Groups[0].Sekki.Number, boxA.Groups[1].Sekki.Number)
 	}
-	if boxA.Groups[1].Ko.Name != "菖蒲華" {
-		t.Errorf("候29 の name = %q, want 菖蒲華", boxA.Groups[1].Ko.Name)
+	if boxA.Groups[1].Sekki.Name != "夏至" {
+		t.Errorf("夏至グループの name = %q, want 夏至", boxA.Groups[1].Sekki.Name)
 	}
 
 	var boxB boxResp
