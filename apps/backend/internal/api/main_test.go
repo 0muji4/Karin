@@ -18,6 +18,8 @@ import (
 	"github.com/0muji4/Karin/apps/backend/internal/api"
 	"github.com/0muji4/Karin/apps/backend/internal/auth"
 	"github.com/0muji4/Karin/apps/backend/internal/dbtest"
+	"github.com/0muji4/Karin/apps/backend/internal/exchange"
+	"github.com/0muji4/Karin/apps/backend/internal/moderation"
 	"github.com/0muji4/Karin/apps/backend/internal/postgres"
 	"github.com/0muji4/Karin/apps/backend/internal/record"
 )
@@ -51,6 +53,7 @@ func handlerForTest() http.Handler {
 		Ko:      postgres.NewKoCatalog(testPool),
 		Auth:    auth.NewService(postgres.NewAuthRepo(testPool)),
 		Records: record.NewService(postgres.NewRecordRepo(testPool)),
+		Cast:    exchange.NewCastService(postgres.NewRecordRepo(testPool), moderation.AllPass{}, postgres.NewPoolRepo(testPool)),
 	}).Handler()
 }
 

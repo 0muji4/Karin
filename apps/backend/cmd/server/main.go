@@ -15,6 +15,8 @@ import (
 	"github.com/0muji4/Karin/apps/backend/internal/auth"
 	"github.com/0muji4/Karin/apps/backend/internal/config"
 	"github.com/0muji4/Karin/apps/backend/internal/db"
+	"github.com/0muji4/Karin/apps/backend/internal/exchange"
+	"github.com/0muji4/Karin/apps/backend/internal/moderation"
 	"github.com/0muji4/Karin/apps/backend/internal/postgres"
 	"github.com/0muji4/Karin/apps/backend/internal/record"
 )
@@ -48,6 +50,7 @@ func run(logger *slog.Logger) error {
 		Ko:      postgres.NewKoCatalog(pool),
 		Auth:    auth.NewService(postgres.NewAuthRepo(pool)),
 		Records: record.NewService(postgres.NewRecordRepo(pool)),
+		Cast:    exchange.NewCastService(postgres.NewRecordRepo(pool), moderation.AllPass{}, postgres.NewPoolRepo(pool)),
 	})
 
 	srv := &http.Server{
