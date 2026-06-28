@@ -72,27 +72,40 @@ func TestLoad_koTTL(t *testing.T) {
 	}
 }
 
-func TestLoad_llmRequiresKeyAndModel(t *testing.T) {
-	// provider を指定したら key/model も必須。
+func TestLoad_vertexRequiresProjectLocationModel(t *testing.T) {
+	// provider=vertex を指定したら project/location/model も必須。
 	_, err := Load(envOf(map[string]string{
 		"DATABASE_URL":       "postgres://localhost/karin",
-		"KARIN_LLM_PROVIDER": "anthropic",
+		"KARIN_LLM_PROVIDER": "vertex",
 	}))
 	if !errors.Is(err, ErrMissing) {
-		t.Fatalf("provider のみで ErrMissing を期待: %v", err)
+		t.Fatalf("vertex のみで ErrMissing を期待: %v", err)
 	}
 
 	cfg, err := Load(envOf(map[string]string{
 		"DATABASE_URL":       "postgres://localhost/karin",
-		"KARIN_LLM_PROVIDER": "anthropic",
-		"KARIN_LLM_API_KEY":  "sk-xxx",
-		"KARIN_LLM_MODEL":    "claude-x",
+		"KARIN_LLM_PROVIDER": "vertex",
+		"KARIN_LLM_MODEL":    "gemini-x",
+		"KARIN_LLM_PROJECT":  "my-gcp-proj",
+		"KARIN_LLM_LOCATION": "asia-northeast1",
 	}))
 	if err != nil {
 		t.Fatalf("予期しないエラー: %v", err)
 	}
-	if cfg.LLM.Provider != "anthropic" || cfg.LLM.Model != "claude-x" {
+	if cfg.LLM.Provider != "vertex" || cfg.LLM.Model != "gemini-x" ||
+		cfg.LLM.Project != "my-gcp-proj" || cfg.LLM.Location != "asia-northeast1" {
 		t.Errorf("LLM 設定が読めていない: %+v", cfg.LLM)
+	}
+}
+
+func TestLoad_unknownLLMProviderErrors(t *testing.T) {
+	// 未対応の provider は ErrMissing ではなく明確な設定エラーにする。
+	_, err := Load(envOf(map[string]string{
+		"DATABASE_URL":       "postgres://localhost/karin",
+		"KARIN_LLM_PROVIDER": "anthropic",
+	}))
+	if err == nil || errors.Is(err, ErrMissing) {
+		t.Fatalf("未対応 provider で設定エラーを期待: %v", err)
 	}
 }
 
