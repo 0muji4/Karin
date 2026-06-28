@@ -52,9 +52,10 @@ func NewServer(logger *slog.Logger, deps Deps) *Server {
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 
-	// 認証不要: 稼働確認・アカウント発行。
+	// 認証不要: 稼働確認・アカウント発行・今日の候（一般情報）。
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
 	mux.HandleFunc("POST /accounts", s.handleCreateAccount)
+	mux.HandleFunc("GET /ko/today", s.handleTodayKo)
 
 	// 認証必須: 文箱は本人だけ。
 	mux.Handle("POST /records", s.requireAuth(http.HandlerFunc(s.handleCreateRecord)))
