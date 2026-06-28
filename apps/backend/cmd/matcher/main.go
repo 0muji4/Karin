@@ -9,8 +9,8 @@ import (
 	"github.com/0muji4/Karin/apps/backend/internal/config"
 	"github.com/0muji4/Karin/apps/backend/internal/db"
 	"github.com/0muji4/Karin/apps/backend/internal/exchange"
-	"github.com/0muji4/Karin/apps/backend/internal/moderation"
 	"github.com/0muji4/Karin/apps/backend/internal/postgres"
+	"github.com/0muji4/Karin/apps/backend/internal/vertex"
 )
 
 // reevalBatch は 1 回の起動で再判定する保留の上限。低トラフィック前提の安全な既定値。
@@ -37,8 +37,12 @@ func run(logger *slog.Logger) error {
 	defer pool.Close()
 
 	// 先に保留(fail-closed で留め置かれた一枚)を再判定し、安全なら配信対象に昇格させる。
-	// LLM 呼び出しを伴うため、配信の単一ライタ・トランザクションの外で行う。関門は設定で差し替える（当面 AllPass）。
-	reeval := exchange.NewReevaluator(moderation.AllPass{}, postgres.NewReevalRepo(pool))
+	// LLM 呼び出しを伴うため、配信の単一ライタ・トランザクションの外で行う。関門は設定で決まる。
+	gate, err := vertex.NewModerator(ctx, cfg.LLM)
+	if err != nil {
+		return err
+	}
+	reeval := exchange.NewReevaluator(gate, postgres.NewReevalRepo(pool))
 	if err := reeval.RunOnce(ctx, reevalBatch); err != nil {
 		return err
 	}
