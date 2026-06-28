@@ -49,7 +49,7 @@ func handlerForTest() http.Handler {
 	return api.NewServer(logger, api.Deps{
 		DB:      testPool,
 		Ko:      postgres.NewKoCatalog(testPool),
-		Auth:    auth.NewService(testPool),
+		Auth:    auth.NewService(postgres.NewAuthRepo(testPool)),
 		Records: record.NewService(postgres.NewRecordRepo(testPool)),
 	}).Handler()
 }
