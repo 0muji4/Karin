@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/0muji4/Karin/apps/backend/internal/auth"
+	"github.com/0muji4/Karin/apps/backend/internal/exchange"
 	"github.com/0muji4/Karin/apps/backend/internal/ko"
 	"github.com/0muji4/Karin/apps/backend/internal/record"
 )
@@ -17,10 +18,11 @@ type Pinger interface {
 
 // Deps は Server が必要とする協力者（ポート）をまとめる。具体実装は cmd（合成ルート）で注入する。
 type Deps struct {
-	DB      Pinger          // /healthz の疎通確認
-	Ko      ko.Catalog      // 候メタの読み取りポート
-	Auth    *auth.Service   // 匿名アカウントと認証
-	Records *record.Service // 文箱の読み書き
+	DB      Pinger                // /healthz の疎通確認
+	Ko      ko.Catalog            // 候メタの読み取りポート
+	Auth    *auth.Service         // 匿名アカウントと認証
+	Records *record.Service       // 文箱の読み書き
+	Cast    *exchange.CastService // 風に乗せる
 }
 
 // Server は API のハンドラ群と依存を束ねる。
@@ -30,6 +32,7 @@ type Server struct {
 	ko      ko.Catalog
 	auth    *auth.Service
 	records *record.Service
+	cast    *exchange.CastService
 }
 
 // NewServer は Server を組み立てる。logger が nil なら既定の slog を使う。
@@ -43,6 +46,7 @@ func NewServer(logger *slog.Logger, deps Deps) *Server {
 		ko:      deps.Ko,
 		auth:    deps.Auth,
 		records: deps.Records,
+		cast:    deps.Cast,
 	}
 }
 
@@ -56,9 +60,10 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /accounts", s.handleCreateAccount)
 	mux.HandleFunc("GET /ko/today", s.handleTodayKo)
 
-	// 認証必須: 文箱は本人だけ。
+	// 認証必須: 文箱は本人だけ。風に乗せるも本人の記録に対してのみ。
 	mux.Handle("POST /records", s.requireAuth(http.HandlerFunc(s.handleCreateRecord)))
 	mux.Handle("GET /box", s.requireAuth(http.HandlerFunc(s.handleListBox)))
+	mux.Handle("POST /records/{id}/cast", s.requireAuth(http.HandlerFunc(s.handleCast)))
 
 	// middleware は外側から: recover -> log -> mux。
 	var h http.Handler = mux
