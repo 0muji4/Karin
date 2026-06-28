@@ -10,7 +10,10 @@ kotlin {
     androidTarget {
         compilerOptions { jvmTarget.set(JvmTarget.JVM_17) }
     }
-    // iOS ターゲットは iOS 着手時に追加する（共有コアは commonMain に置き、再実装にしない）。
+    // iOS ターゲット。共有コアを iOS でもビルド可能な構造にする（iOS UI 着手時に iosApp を足す）。
+    listOf(iosX64(), iosArm64(), iosSimulatorArm64()).forEach { target ->
+        target.binaries.framework { baseName = "shared" }
+    }
 
     sourceSets {
         commonMain.dependencies {
@@ -22,12 +25,15 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
-            implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.kotlinx.coroutines.test)
             implementation(libs.ktor.client.mock)
         }
         androidMain.dependencies {
             implementation(libs.ktor.client.okhttp)
             implementation(libs.androidx.security.crypto)
+        }
+        iosMain.dependencies {
+            implementation(libs.ktor.client.darwin)
         }
     }
 }
