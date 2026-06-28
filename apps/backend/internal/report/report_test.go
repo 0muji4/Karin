@@ -45,12 +45,22 @@ func (errModerator) Review(context.Context, string) (moderation.Decision, error)
 	return moderation.Decision{}, errors.New("llm down")
 }
 
-// 通報は記録され、本文が再判定され、判定が Resolve に渡る。
+// 通報は記録され本文が再判定され、判定に応じた決着・評判・保全の方針が Resolve に渡る。
 func TestReport_再判定の結果を反映する(t *testing.T) {
-	for _, v := range []moderation.Verdict{moderation.Safe, moderation.HarmToOthers, moderation.Child} {
-		t.Run(v.Label(), func(t *testing.T) {
+	cases := []struct {
+		v           moderation.Verdict
+		wantRes     report.Resolution
+		wantDelta   int
+		wantChild   bool
+	}{
+		{moderation.Safe, report.ResolutionDismissed, 0, false},
+		{moderation.HarmToOthers, report.ResolutionUpheld, -1, false},
+		{moderation.Child, report.ResolutionUpheld, -1, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.v.Label(), func(t *testing.T) {
 			store := &fakeStore{subj: report.Subject{AuthorID: uuid.New(), Body: "本文"}}
-			svc := report.NewService(verdictModerator{v: v}, store)
+			svc := report.NewService(verdictModerator{v: tc.v}, store)
 
 			if err := svc.Report(context.Background(), uuid.New(), uuid.New(), "harassment", ""); err != nil {
 				t.Fatalf("Report: %v", err)
@@ -58,8 +68,9 @@ func TestReport_再判定の結果を反映する(t *testing.T) {
 			if !store.resolved {
 				t.Fatal("再判定の結果が反映されていない")
 			}
-			if store.gotOut.Verdict != v {
-				t.Errorf("Verdict=%v, want %v", store.gotOut.Verdict, v)
+			out := store.gotOut
+			if out.Verdict != tc.v || out.Resolution != tc.wantRes || out.ReputationDelta != tc.wantDelta || out.ChildSafety != tc.wantChild {
+				t.Errorf("方針が不正: %+v (want res=%s delta=%d child=%v)", out, tc.wantRes, tc.wantDelta, tc.wantChild)
 			}
 		})
 	}
