@@ -25,10 +25,13 @@ type Config struct {
 }
 
 // LLMConfig は関門が呼ぶ外部 LLM プロバイダの設定。
+// Provider が空なら関門は全通過(AllPass)で、記録・交換は LLM 無しで動く。
 type LLMConfig struct {
-	Provider string
-	APIKey   string
+	Provider string // 対応: "vertex"（Vertex AI）。
 	Model    string
+	APIKey   string // API キー認証のプロバイダ用。Vertex は ADC を使うので未使用。
+	Project  string // Vertex AI の GCP プロジェクト ID。
+	Location string // Vertex AI のリージョン（例: asia-northeast1）。
 }
 
 const (
@@ -64,17 +67,28 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 		cfg.KoTTL = n
 	}
 
-	// LLM 設定は任意。provider を指定したときは key/model も要る。
+	// LLM 設定は任意。provider を指定したときだけ、その方式に要る項目を必須にする。
 	cfg.LLM.Provider, _ = lookupTrim(lookup, "KARIN_LLM_PROVIDER")
-	cfg.LLM.APIKey, _ = lookupTrim(lookup, "KARIN_LLM_API_KEY")
 	cfg.LLM.Model, _ = lookupTrim(lookup, "KARIN_LLM_MODEL")
-	if cfg.LLM.Provider != "" {
-		if cfg.LLM.APIKey == "" {
-			missing = append(missing, "KARIN_LLM_API_KEY")
-		}
+	cfg.LLM.APIKey, _ = lookupTrim(lookup, "KARIN_LLM_API_KEY")
+	cfg.LLM.Project, _ = lookupTrim(lookup, "KARIN_LLM_PROJECT")
+	cfg.LLM.Location, _ = lookupTrim(lookup, "KARIN_LLM_LOCATION")
+	switch cfg.LLM.Provider {
+	case "":
+		// 関門は AllPass。記録・交換は LLM 無しで動く。
+	case "vertex":
+		// Vertex AI は ADC（サービスアカウント等）で認証するため API キーは使わない。
 		if cfg.LLM.Model == "" {
 			missing = append(missing, "KARIN_LLM_MODEL")
 		}
+		if cfg.LLM.Project == "" {
+			missing = append(missing, "KARIN_LLM_PROJECT")
+		}
+		if cfg.LLM.Location == "" {
+			missing = append(missing, "KARIN_LLM_LOCATION")
+		}
+	default:
+		return Config{}, fmt.Errorf("未対応の LLM provider: %q（対応: vertex）", cfg.LLM.Provider)
 	}
 
 	if len(missing) > 0 {
