@@ -25,12 +25,26 @@ type Subject struct {
 	Body      string
 }
 
-// Outcome は再判定の結果。Store がこれを見て通報の決着・評判・保全を反映する。
+// Resolution は通報の決着（DB の report.resolution と一致）。
+type Resolution string
+
+const (
+	// ResolutionUpheld は再判定でも不適切と確定した（通報は妥当）。
+	ResolutionUpheld Resolution = "upheld"
+	// ResolutionDismissed は再判定で問題なしとした（通報は不成立）。
+	ResolutionDismissed Resolution = "dismissed"
+)
+
+// Outcome は再判定の結果と、それに基づく決着・評判・保全の方針。
+// 「判定が何を意味するか」のポリシーは usecase が決め、Store はそれを永続化するだけにする。
 type Outcome struct {
-	ReportID uuid.UUID
-	Subject  Subject
-	Verdict  moderation.Verdict
-	Reason   string
+	ReportID        uuid.UUID
+	Subject         Subject
+	Verdict         moderation.Verdict // 監査(gate_verdict)に残す
+	Reason          string
+	Resolution      Resolution
+	ReputationDelta int  // 著者評判の増減（upheld で負）
+	ChildSafety     bool // 児童保全ホールドを作るか
 }
 
 // Store は通報の永続化と決着のポート。匿名性を守る責務（受け手向けに著者を開かない）も実装側にある。
@@ -66,10 +80,19 @@ func (s *Service) Report(ctx context.Context, tanzakuID, reporterID uuid.UUID, r
 		// fail-closed: 確定できないものは決着させない。通報は残り、後で再判定される。
 		return nil
 	}
-	return s.store.Resolve(ctx, Outcome{
-		ReportID: reportID,
-		Subject:  subj,
-		Verdict:  dec.Verdict,
-		Reason:   dec.Reason,
-	})
+
+	out := Outcome{
+		ReportID:   reportID,
+		Subject:    subj,
+		Verdict:    dec.Verdict,
+		Reason:     dec.Reason,
+		Resolution: ResolutionDismissed,
+	}
+	if dec.Verdict != moderation.Safe {
+		// 再判定でも不適切: 通報を妥当とし、著者の評判を下げる。児童は保全も起こす。
+		out.Resolution = ResolutionUpheld
+		out.ReputationDelta = -1
+		out.ChildSafety = dec.Verdict == moderation.Child
+	}
+	return s.store.Resolve(ctx, out)
 }
