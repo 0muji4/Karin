@@ -4,33 +4,22 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 
-import app.karin.shared.greeting
+import app.karin.nav.KarinNavHost
+import app.karin.ui.theme.KarinTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val container = (application as KarinApplication).container
         setContent {
-            MaterialTheme {
+            KarinTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    Greeting()
+                    KarinNavHost(container)
                 }
             }
         }
     }
-}
-
-@Composable
-private fun Greeting() {
-    Text(
-        text = greeting(),
-        modifier = Modifier.fillMaxSize().wrapContentSize(Alignment.Center),
-    )
 }
