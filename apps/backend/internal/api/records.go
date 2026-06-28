@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/0muji4/Karin/apps/backend/internal/db/sqlcdb"
 	"github.com/0muji4/Karin/apps/backend/internal/ko"
 	"github.com/0muji4/Karin/apps/backend/internal/record"
 )
@@ -110,20 +109,20 @@ func (s *Server) handleListBox(w http.ResponseWriter, r *http.Request) {
 }
 
 // koMetaMap は全候のメタを番号引きの map で返す。
-func (s *Server) koMetaMap(r *http.Request) (map[int]sqlcdb.KoReference, error) {
-	metas, err := sqlcdb.New(s.pool).ListKoReference(r.Context())
+func (s *Server) koMetaMap(r *http.Request) (map[int]ko.Meta, error) {
+	metas, err := s.ko.List(r.Context())
 	if err != nil {
 		return nil, err
 	}
-	m := make(map[int]sqlcdb.KoReference, len(metas))
+	m := make(map[int]ko.Meta, len(metas))
 	for _, meta := range metas {
-		m[int(meta.Ko)] = meta
+		m[meta.Number] = meta
 	}
 	return m, nil
 }
 
 // koJSONFor はメタがあれば埋め、無ければ番号だけ返す。
-func koJSONFor(koNum int, metaByKo map[int]sqlcdb.KoReference) koJSON {
+func koJSONFor(koNum int, metaByKo map[int]ko.Meta) koJSON {
 	if m, ok := metaByKo[koNum]; ok {
 		return toKoJSON(m)
 	}

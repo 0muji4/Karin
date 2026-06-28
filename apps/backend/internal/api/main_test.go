@@ -18,6 +18,7 @@ import (
 	"github.com/0muji4/Karin/apps/backend/internal/api"
 	"github.com/0muji4/Karin/apps/backend/internal/auth"
 	"github.com/0muji4/Karin/apps/backend/internal/dbtest"
+	"github.com/0muji4/Karin/apps/backend/internal/postgres"
 	"github.com/0muji4/Karin/apps/backend/internal/record"
 )
 
@@ -47,7 +48,7 @@ func handlerForTest() http.Handler {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	return api.NewServer(logger, api.Deps{
 		DB:      testPool,
-		Pool:    testPool,
+		Ko:      postgres.NewKoCatalog(testPool),
 		Auth:    auth.NewService(testPool),
 		Records: record.NewService(testPool),
 	}).Handler()
