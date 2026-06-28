@@ -56,6 +56,10 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
 	mux.HandleFunc("POST /accounts", s.handleCreateAccount)
 
+	// 認証必須: 文箱は本人だけ。
+	mux.Handle("POST /records", s.requireAuth(http.HandlerFunc(s.handleCreateRecord)))
+	mux.Handle("GET /box", s.requireAuth(http.HandlerFunc(s.handleListBox)))
+
 	// middleware は外側から: recover -> log -> mux。
 	var h http.Handler = mux
 	h = logMiddleware(s.logger, h)
