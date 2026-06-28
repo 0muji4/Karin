@@ -1,5 +1,5 @@
-// Package record は記録・文箱を担う。記録は本人だけがアクセスできる。
-// owner-only は全クエリで owner_id を必ず条件に入れて守る（DB は行単位認可を持たない）。
+// Package record は記録・文箱のユースケースとドメインを担う。記録は本人だけがアクセスできる。
+// 永続化は Repository ポートに委ね、この層は具体 DB を知らない（依存性ルール）。
 package record
 
 import (
@@ -11,10 +11,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
-
-	"github.com/0muji4/Karin/apps/backend/internal/db/sqlcdb"
 )
 
 // MaxBodyRunes は短冊本文の上限（短い言葉のための上限）。
@@ -26,7 +22,7 @@ var ErrInvalid = errors.New("記録の内容が不正")
 // ErrNotFound は本人の記録が見つからないときに返る。
 var ErrNotFound = errors.New("記録が見つからない")
 
-// Record は文箱の一枚（API 応答の素）。owner_id は本人のものなので応答には含めない。
+// Record は文箱の一枚（ドメインの実体）。owner_id は本人のものなので応答には含めない。
 type Record struct {
 	ID        uuid.UUID
 	KoWritten int
@@ -34,17 +30,25 @@ type Record struct {
 	CreatedAt time.Time
 }
 
-// Service は文箱の読み書きを提供する。
+// Repository は記録の永続化ポート。owner-only は実装側が owner_id を必ず条件に入れて守る。
+// Get は見つからなければ ErrNotFound を返す（具体 DB のエラーはアダプタが変換する）。
+type Repository interface {
+	Create(ctx context.Context, ownerID uuid.UUID, body string, ko int) (Record, error)
+	ListByOwner(ctx context.Context, ownerID uuid.UUID) ([]Record, error)
+	Get(ctx context.Context, id, ownerID uuid.UUID) (Record, error)
+}
+
+// Service は文箱の読み書きユースケース。入力検証を行い、永続化はポートに委ねる。
 type Service struct {
-	pool *pgxpool.Pool
+	repo Repository
 }
 
-// NewService は接続プールから Service を作る。
-func NewService(pool *pgxpool.Pool) *Service {
-	return &Service{pool: pool}
+// NewService は Repository ポートから Service を作る。
+func NewService(repo Repository) *Service {
+	return &Service{repo: repo}
 }
 
-// Create は本人の文箱に短冊を 1 枚保存する。
+// Create は本文と候を検証してから記録を 1 枚保存する。
 func (s *Service) Create(ctx context.Context, ownerID uuid.UUID, body string, ko int) (Record, error) {
 	body = strings.TrimSpace(body)
 	if body == "" {
@@ -56,42 +60,15 @@ func (s *Service) Create(ctx context.Context, ownerID uuid.UUID, body string, ko
 	if ko < 1 || ko > 72 {
 		return Record{}, fmt.Errorf("%w: 候は 1〜72", ErrInvalid)
 	}
-
-	q := sqlcdb.New(s.pool)
-	row, err := q.CreateRecord(ctx, sqlcdb.CreateRecordParams{
-		OwnerID:   ownerID,
-		Body:      body,
-		KoWritten: int16(ko),
-	})
-	if err != nil {
-		return Record{}, fmt.Errorf("記録の保存に失敗: %w", err)
-	}
-	return Record{ID: row.ID, KoWritten: int(row.KoWritten), Body: row.Body, CreatedAt: row.CreatedAt}, nil
+	return s.repo.Create(ctx, ownerID, body, ko)
 }
 
 // ListByOwner は本人の文箱を候別（昇順）・新しい順で返す。
 func (s *Service) ListByOwner(ctx context.Context, ownerID uuid.UUID) ([]Record, error) {
-	q := sqlcdb.New(s.pool)
-	rows, err := q.ListRecordsByOwner(ctx, ownerID)
-	if err != nil {
-		return nil, fmt.Errorf("文箱の取得に失敗: %w", err)
-	}
-	out := make([]Record, 0, len(rows))
-	for _, r := range rows {
-		out = append(out, Record{ID: r.ID, KoWritten: int(r.KoWritten), Body: r.Body, CreatedAt: r.CreatedAt})
-	}
-	return out, nil
+	return s.repo.ListByOwner(ctx, ownerID)
 }
 
-// Get は本人の短冊を 1 枚返す（owner_id で必ず絞る）。見つからなければ ErrNotFound。
+// Get は本人の短冊を 1 枚返す。見つからなければ ErrNotFound。
 func (s *Service) Get(ctx context.Context, id, ownerID uuid.UUID) (Record, error) {
-	q := sqlcdb.New(s.pool)
-	row, err := q.GetRecord(ctx, sqlcdb.GetRecordParams{ID: id, OwnerID: ownerID})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Record{}, ErrNotFound
-	}
-	if err != nil {
-		return Record{}, fmt.Errorf("記録の取得に失敗: %w", err)
-	}
-	return Record{ID: row.ID, KoWritten: int(row.KoWritten), Body: row.Body, CreatedAt: row.CreatedAt}, nil
+	return s.repo.Get(ctx, id, ownerID)
 }

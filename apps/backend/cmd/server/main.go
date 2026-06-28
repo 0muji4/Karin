@@ -47,7 +47,7 @@ func run(logger *slog.Logger) error {
 		DB:      pool,
 		Ko:      postgres.NewKoCatalog(pool),
 		Auth:    auth.NewService(pool),
-		Records: record.NewService(pool),
+		Records: record.NewService(postgres.NewRecordRepo(pool)),
 	})
 
 	srv := &http.Server{
