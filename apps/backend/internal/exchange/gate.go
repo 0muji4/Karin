@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+
+	"github.com/0muji4/Karin/apps/backend/internal/moderation"
 )
 
 // CastInput は風に乗せる一枚の素材（記録から複製した本文・候と、その由来）。
@@ -29,4 +31,9 @@ type GateEffects interface {
 	// 本文をスナップショットして awaiting で保持し、復旧後にマッチャが再判定する。
 	// cause は保留に至った原因（LLM の呼び出し/解釈エラー等）で、監査にだけ残し著者には見せない。
 	HoldForReview(ctx context.Context, in CastInput, cause string) error
+
+	// RecordRejected は配信しないと確定した一枚（他者害・危機・児童）を rejected として残し、
+	// 判定監査を書く。児童の場合は児童保全のホールドも不可分に作る。配信もクレジット加算もしない。
+	// reason は監査用で、著者には見せない。
+	RecordRejected(ctx context.Context, in CastInput, v moderation.Verdict, reason string) error
 }
