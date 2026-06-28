@@ -51,6 +51,7 @@ func run(logger *slog.Logger) error {
 		Auth:    auth.NewService(postgres.NewAuthRepo(pool)),
 		Records: record.NewService(postgres.NewRecordRepo(pool)),
 		Cast:    exchange.NewCastService(postgres.NewRecordRepo(pool), moderation.AllPass{}, postgres.NewPoolRepo(pool)),
+		Inbox:   postgres.NewInboxRepo(pool),
 	})
 
 	srv := &http.Server{

@@ -23,6 +23,7 @@ type Deps struct {
 	Auth    *auth.Service         // 匿名アカウントと認証
 	Records *record.Service       // 文箱の読み書き
 	Cast    *exchange.CastService // 風に乗せる
+	Inbox   exchange.Inbox        // 受信（風だより）の読み取り・文箱にしまう
 }
 
 // Server は API のハンドラ群と依存を束ねる。
@@ -33,6 +34,7 @@ type Server struct {
 	auth    *auth.Service
 	records *record.Service
 	cast    *exchange.CastService
+	inbox   exchange.Inbox
 }
 
 // NewServer は Server を組み立てる。logger が nil なら既定の slog を使う。
@@ -47,6 +49,7 @@ func NewServer(logger *slog.Logger, deps Deps) *Server {
 		auth:    deps.Auth,
 		records: deps.Records,
 		cast:    deps.Cast,
+		inbox:   deps.Inbox,
 	}
 }
 
@@ -64,6 +67,8 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("POST /records", s.requireAuth(http.HandlerFunc(s.handleCreateRecord)))
 	mux.Handle("GET /box", s.requireAuth(http.HandlerFunc(s.handleListBox)))
 	mux.Handle("POST /records/{id}/cast", s.requireAuth(http.HandlerFunc(s.handleCast)))
+	mux.Handle("GET /deliveries", s.requireAuth(http.HandlerFunc(s.handleListDeliveries)))
+	mux.Handle("POST /deliveries/{id}/keep", s.requireAuth(http.HandlerFunc(s.handleKeep)))
 
 	// middleware は外側から: recover -> log -> mux。
 	var h http.Handler = mux
