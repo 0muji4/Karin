@@ -32,21 +32,23 @@ func (s *CastService) CastToWind(ctx context.Context, ownerID, recordID uuid.UUI
 	if err != nil {
 		return err
 	}
+	in := CastInput{
+		AuthorID:       ownerID,
+		SourceRecordID: recordID,
+		Body:           rec.Body,
+		Ko:             rec.KoWritten,
+	}
 
 	dec, err := s.gate.Review(ctx, rec.Body)
 	if err != nil {
-		// fail-closed（保留）は後続 PR。現状は配信せずエラーを伝播する。
-		return err
+		// fail-closed: 判定が確定しないものは配信せず保留し、復旧後に再判定する。
+		// 判定は著者に見せないので、保留も成功と同じ一律の応答になる。
+		return s.effects.HoldForReview(ctx, in, err.Error())
 	}
 	if dec.Verdict != moderation.Safe {
 		// 他者害/危機/児童の効果適用は後続 PR。現状は配信しない。
 		return nil
 	}
 
-	return s.effects.PoolSafe(ctx, CastInput{
-		AuthorID:       ownerID,
-		SourceRecordID: recordID,
-		Body:           rec.Body,
-		Ko:             rec.KoWritten,
-	})
+	return s.effects.PoolSafe(ctx, in)
 }
