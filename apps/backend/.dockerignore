@@ -1,0 +1,11 @@
+# ビルド成果物・テスト生成物（イメージに不要）。
+bin/
+*.exe
+*.test
+*.out
+# テストコード（cmd のビルドには不要）。
+*_test.go
+# コンテナ定義そのもの。
+Dockerfile
+.dockerignore
+docker-compose.yml
