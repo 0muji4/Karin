@@ -19,17 +19,21 @@ import kotlinx.serialization.json.Json
 // KarinClient は HTTP の土台。base URL・JSON・Bearer 付与・失敗の KarinError への正規化を担い、
 // 個々のエンドポイントは別ファイル（KarinApi）が本クライアントを使って実装する。
 // engine を注入できるのはテスト（MockEngine）のため。null なら各プラットフォーム既定エンジン。
-class KarinClient(
+class KarinClient internal constructor(
     baseUrl: String,
     private val tokenStore: TokenStore,
-    engine: HttpClientEngine? = null,
+    engine: HttpClientEngine?,
 ) {
-    val json: Json = Json {
+    // 本番はプラットフォーム既定エンジンを使う。engine 注入はテスト(MockEngine)専用なので
+    // internal の一次コンストラクタに隠し、Ktor 型を公開 API に漏らさない（UI から Ktor は見えない）。
+    constructor(baseUrl: String, tokenStore: TokenStore) : this(baseUrl, tokenStore, null)
+
+    internal val json: Json = Json {
         ignoreUnknownKeys = true // サーバが増やしたフィールドで壊れない
         encodeDefaults = true
     }
 
-    val http: HttpClient = run {
+    internal val http: HttpClient = run {
         val normalizedBase = if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"
         val config: HttpClientConfig<*>.() -> Unit = {
             install(ContentNegotiation) { json(json) }
@@ -45,7 +49,7 @@ class KarinClient(
     }
 
     // throwIfError は失敗応答を KarinError に正規化して投げる。成功なら何もしない。
-    suspend fun throwIfError(response: HttpResponse) {
+    internal suspend fun throwIfError(response: HttpResponse) {
         if (response.status.isSuccess()) return
         throw when (response.status.value) {
             401 -> KarinError.Unauthorized
