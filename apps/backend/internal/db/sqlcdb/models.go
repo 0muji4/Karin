@@ -20,6 +20,18 @@ type AuthToken struct {
 	RevokedAt  pgtype.Timestamptz
 }
 
+type Delivery struct {
+	TanzakuID   uuid.UUID
+	RecipientID uuid.UUID
+	DeliveredOn pgtype.Date
+	KeptAt      pgtype.Timestamptz
+}
+
+type ExchangeLedger struct {
+	UserID         uuid.UUID
+	ReceiveCredits int32
+}
+
 type KoReference struct {
 	Ko      int16
 	Name    string
@@ -36,6 +48,16 @@ type Record struct {
 	KoWritten int16
 	CreatedAt time.Time
 	DeletedAt pgtype.Timestamptz
+}
+
+type Tanzaku struct {
+	ID         uuid.UUID
+	AuthorID   pgtype.UUID
+	Body       string
+	KoWritten  int16
+	Status     string
+	PooledAt   time.Time
+	IsOfficial bool
 }
 
 type User struct {
