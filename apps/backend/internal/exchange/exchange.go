@@ -4,7 +4,6 @@
 package exchange
 
 import (
-	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -29,9 +28,4 @@ type Tanzaku struct {
 	Status     Status
 	PooledAt   time.Time
 	IsOfficial bool
-}
-
-// Pool は風に乗せる投入ポート。短冊の pooled 投入と著者クレジット +1 を不可分に行う。
-type Pool interface {
-	Pool(ctx context.Context, authorID uuid.UUID, body string, ko int, isOfficial bool) (Tanzaku, error)
 }
