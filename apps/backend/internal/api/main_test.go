@@ -50,7 +50,7 @@ func handlerForTest() http.Handler {
 		DB:      testPool,
 		Ko:      postgres.NewKoCatalog(testPool),
 		Auth:    auth.NewService(testPool),
-		Records: record.NewService(testPool),
+		Records: record.NewService(postgres.NewRecordRepo(testPool)),
 	}).Handler()
 }
 

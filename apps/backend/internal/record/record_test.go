@@ -6,58 +6,33 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/0muji4/Karin/apps/backend/internal/db/sqlcdb"
-	"github.com/0muji4/Karin/apps/backend/internal/dbtest"
+	"github.com/google/uuid"
+
 	"github.com/0muji4/Karin/apps/backend/internal/record"
 )
 
-func TestRecord_OwnerOnlyAndValidation(t *testing.T) {
-	if testing.Short() {
-		t.Skip("結合テスト: Docker が要る（-short で除外）")
-	}
-	ctx := context.Background()
-	pool, _, terminate, err := dbtest.MigratedPool(ctx)
-	if err != nil {
-		t.Fatalf("PG 起動失敗: %v", err)
-	}
-	defer terminate()
+// fakeRepo は Repository ポートの DB 不要なテスト実装。
+type fakeRepo struct {
+	createCalled bool
+	getErr       error
+}
 
-	q := sqlcdb.New(pool)
-	ownerA, err := q.CreateUser(ctx)
-	if err != nil {
-		t.Fatalf("ユーザーA作成: %v", err)
-	}
-	ownerB, err := q.CreateUser(ctx)
-	if err != nil {
-		t.Fatalf("ユーザーB作成: %v", err)
-	}
+func (f *fakeRepo) Create(_ context.Context, ownerID uuid.UUID, body string, ko int) (record.Record, error) {
+	f.createCalled = true
+	return record.Record{ID: uuid.New(), Body: body, KoWritten: ko}, nil
+}
 
-	svc := record.NewService(pool)
+func (f *fakeRepo) ListByOwner(context.Context, uuid.UUID) ([]record.Record, error) {
+	return nil, nil
+}
 
-	rec, err := svc.Create(ctx, ownerA.ID, "桜が咲いた", 11)
-	if err != nil {
-		t.Fatalf("Create: %v", err)
-	}
+func (f *fakeRepo) Get(context.Context, uuid.UUID, uuid.UUID) (record.Record, error) {
+	return record.Record{}, f.getErr
+}
 
-	// A は自分の記録を取得できる。
-	if _, err := svc.Get(ctx, rec.ID, ownerA.ID); err != nil {
-		t.Errorf("A による Get に失敗: %v", err)
-	}
-	// B は A の記録 ID を指定しても取得できない（owner-only）。
-	if _, err := svc.Get(ctx, rec.ID, ownerB.ID); !errors.Is(err, record.ErrNotFound) {
-		t.Errorf("B による Get: err = %v, want ErrNotFound", err)
-	}
-	// 一覧も owner ごとに分離される。
-	listA, err := svc.ListByOwner(ctx, ownerA.ID)
-	if err != nil || len(listA) != 1 {
-		t.Errorf("A の一覧 = %d 件 (err=%v), want 1", len(listA), err)
-	}
-	listB, err := svc.ListByOwner(ctx, ownerB.ID)
-	if err != nil || len(listB) != 0 {
-		t.Errorf("B の一覧 = %d 件 (err=%v), want 0", len(listB), err)
-	}
-
-	// バリデーション: 空本文・候範囲外・長すぎる本文は ErrInvalid。
+// 検証は永続化の前に行われ、不正入力は repo に到達しない（DB 不要の単体テスト）。
+func TestService_CreateValidation(t *testing.T) {
+	owner := uuid.New()
 	bad := []struct {
 		name string
 		body string
@@ -69,8 +44,33 @@ func TestRecord_OwnerOnlyAndValidation(t *testing.T) {
 		{"本文超過", strings.Repeat("あ", record.MaxBodyRunes+1), 11},
 	}
 	for _, b := range bad {
-		if _, err := svc.Create(ctx, ownerA.ID, b.body, b.ko); !errors.Is(err, record.ErrInvalid) {
-			t.Errorf("%s: err = %v, want ErrInvalid", b.name, err)
-		}
+		t.Run(b.name, func(t *testing.T) {
+			repo := &fakeRepo{}
+			svc := record.NewService(repo)
+			if _, err := svc.Create(context.Background(), owner, b.body, b.ko); !errors.Is(err, record.ErrInvalid) {
+				t.Errorf("err = %v, want ErrInvalid", err)
+			}
+			if repo.createCalled {
+				t.Errorf("不正入力なのに repo.Create が呼ばれた")
+			}
+		})
+	}
+
+	// 妥当な入力は検証を通り、repo に委譲される。
+	repo := &fakeRepo{}
+	svc := record.NewService(repo)
+	if _, err := svc.Create(context.Background(), owner, "  桜が咲いた  ", 11); err != nil {
+		t.Fatalf("妥当な入力で失敗: %v", err)
+	}
+	if !repo.createCalled {
+		t.Errorf("妥当な入力なのに repo.Create が呼ばれていない")
+	}
+}
+
+// Get はポートの ErrNotFound をそのまま返す。
+func TestService_GetPassesThroughNotFound(t *testing.T) {
+	svc := record.NewService(&fakeRepo{getErr: record.ErrNotFound})
+	if _, err := svc.Get(context.Background(), uuid.New(), uuid.New()); !errors.Is(err, record.ErrNotFound) {
+		t.Errorf("err = %v, want ErrNotFound", err)
 	}
 }
