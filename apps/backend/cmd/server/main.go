@@ -16,10 +16,10 @@ import (
 	"github.com/0muji4/Karin/apps/backend/internal/config"
 	"github.com/0muji4/Karin/apps/backend/internal/db"
 	"github.com/0muji4/Karin/apps/backend/internal/exchange"
-	"github.com/0muji4/Karin/apps/backend/internal/moderation"
 	"github.com/0muji4/Karin/apps/backend/internal/postgres"
 	"github.com/0muji4/Karin/apps/backend/internal/record"
 	"github.com/0muji4/Karin/apps/backend/internal/report"
+	"github.com/0muji4/Karin/apps/backend/internal/vertex"
 )
 
 func main() {
@@ -46,14 +46,21 @@ func run(logger *slog.Logger) error {
 	}
 	defer pool.Close()
 
+	// 関門は設定で決まる: Provider 未設定なら AllPass、"vertex" なら Vertex AI の LLM 関門。
+	// 風に乗せると通報の再判定で同じ関門を共有する。
+	gate, err := vertex.NewModerator(ctx, cfg.LLM)
+	if err != nil {
+		return err
+	}
+
 	apiServer := api.NewServer(logger, api.Deps{
 		DB:      pool,
 		Ko:      postgres.NewKoCatalog(pool),
 		Auth:    auth.NewService(postgres.NewAuthRepo(pool)),
 		Records: record.NewService(postgres.NewRecordRepo(pool)),
-		Cast:    exchange.NewCastService(postgres.NewRecordRepo(pool), moderation.AllPass{}, postgres.NewPoolRepo(pool)),
+		Cast:    exchange.NewCastService(postgres.NewRecordRepo(pool), gate, postgres.NewPoolRepo(pool)),
 		Inbox:   postgres.NewInboxRepo(pool),
-		Reports: report.NewService(moderation.AllPass{}, postgres.NewReportRepo(pool)),
+		Reports: report.NewService(gate, postgres.NewReportRepo(pool)),
 	})
 
 	srv := &http.Server{
