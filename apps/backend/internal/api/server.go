@@ -9,6 +9,7 @@ import (
 	"github.com/0muji4/Karin/apps/backend/internal/exchange"
 	"github.com/0muji4/Karin/apps/backend/internal/ko"
 	"github.com/0muji4/Karin/apps/backend/internal/record"
+	"github.com/0muji4/Karin/apps/backend/internal/report"
 )
 
 // Pinger は依存（DB）の疎通確認だけを抽象化する。pgxpool.Pool が満たす。
@@ -24,6 +25,7 @@ type Deps struct {
 	Records *record.Service       // 文箱の読み書き
 	Cast    *exchange.CastService // 風に乗せる
 	Inbox   exchange.Inbox        // 受信（風だより）の読み取り・文箱にしまう
+	Reports *report.Service       // 受け手による通報の再判定
 }
 
 // Server は API のハンドラ群と依存を束ねる。
@@ -35,6 +37,7 @@ type Server struct {
 	records *record.Service
 	cast    *exchange.CastService
 	inbox   exchange.Inbox
+	reports *report.Service
 }
 
 // NewServer は Server を組み立てる。logger が nil なら既定の slog を使う。
@@ -50,6 +53,7 @@ func NewServer(logger *slog.Logger, deps Deps) *Server {
 		records: deps.Records,
 		cast:    deps.Cast,
 		inbox:   deps.Inbox,
+		reports: deps.Reports,
 	}
 }
 
@@ -69,6 +73,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("POST /records/{id}/cast", s.requireAuth(http.HandlerFunc(s.handleCast)))
 	mux.Handle("GET /deliveries", s.requireAuth(http.HandlerFunc(s.handleListDeliveries)))
 	mux.Handle("POST /deliveries/{id}/keep", s.requireAuth(http.HandlerFunc(s.handleKeep)))
+	mux.Handle("POST /reports", s.requireAuth(http.HandlerFunc(s.handleCreateReport)))
 
 	// middleware は外側から: recover -> log -> mux。
 	var h http.Handler = mux

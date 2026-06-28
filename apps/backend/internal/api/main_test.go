@@ -22,6 +22,7 @@ import (
 	"github.com/0muji4/Karin/apps/backend/internal/moderation"
 	"github.com/0muji4/Karin/apps/backend/internal/postgres"
 	"github.com/0muji4/Karin/apps/backend/internal/record"
+	"github.com/0muji4/Karin/apps/backend/internal/report"
 )
 
 // testPool は結合テストで共有する接続プール（TestMain で 1 度だけ用意する）。
@@ -55,6 +56,7 @@ func handlerForTest() http.Handler {
 		Records: record.NewService(postgres.NewRecordRepo(testPool)),
 		Cast:    exchange.NewCastService(postgres.NewRecordRepo(testPool), moderation.AllPass{}, postgres.NewPoolRepo(testPool)),
 		Inbox:   postgres.NewInboxRepo(testPool),
+		Reports: report.NewService(moderation.AllPass{}, postgres.NewReportRepo(testPool)),
 	}).Handler()
 }
 
