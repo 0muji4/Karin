@@ -1,0 +1,11 @@
+# Gradle / ビルド成果物
+.gradle/
+build/
+**/build/
+# 端末固有（SDK パス等）。コミットしない。
+local.properties
+# Kotlin / IDE
+.kotlin/
+*.iml
+.idea/
+captures/

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Compose 主体のため最小限。実テーマ（静けさの配色）は Compose 側の Theme で定義する。 -->
+    <style name="Theme.Karin" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>
