@@ -11,6 +11,23 @@ import (
 	"github.com/google/uuid"
 )
 
+const adjustReputation = `-- name: AdjustReputation :exec
+UPDATE users
+SET reputation = reputation + $2
+WHERE id = $1
+`
+
+type AdjustReputationParams struct {
+	ID         uuid.UUID
+	Reputation int32
+}
+
+// 通報の決着に応じて評判を増減する（別表にせず集約列で持つ）。
+func (q *Queries) AdjustReputation(ctx context.Context, arg AdjustReputationParams) error {
+	_, err := q.db.Exec(ctx, adjustReputation, arg.ID, arg.Reputation)
+	return err
+}
+
 const createUser = `-- name: CreateUser :one
 INSERT INTO users DEFAULT VALUES
 RETURNING id, created_at, role, reputation, suspended_at

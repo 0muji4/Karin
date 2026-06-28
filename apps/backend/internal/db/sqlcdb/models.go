@@ -20,6 +20,17 @@ type AuthToken struct {
 	RevokedAt  pgtype.Timestamptz
 }
 
+type ChildSafetyAlert struct {
+	ID             uuid.UUID
+	TanzakuID      pgtype.UUID
+	AuthorID       uuid.UUID
+	BodySnapshot   string
+	SourceReportID pgtype.UUID
+	CreatedAt      time.Time
+	OperatorAckAt  pgtype.Timestamptz
+	OperatorID     pgtype.UUID
+}
+
 type Delivery struct {
 	TanzakuID   uuid.UUID
 	RecipientID uuid.UUID
@@ -32,6 +43,16 @@ type ExchangeLedger struct {
 	ReceiveCredits int32
 }
 
+type GateVerdict struct {
+	ID          uuid.UUID
+	SubjectKind string
+	SubjectID   uuid.UUID
+	Verdict     string
+	Model       *string
+	Raw         []byte
+	CreatedAt   time.Time
+}
+
 type KoReference struct {
 	Ko      int16
 	Name    string
@@ -39,6 +60,20 @@ type KoReference struct {
 	Meaning string
 	Sekki   int16
 	Season  string
+}
+
+type PendingSubmission struct {
+	ID                uuid.UUID
+	AuthorID          uuid.UUID
+	SourceRecordID    pgtype.UUID
+	Body              string
+	KoWritten         int16
+	Status            string
+	Attempts          int32
+	LastError         *string
+	CreatedAt         time.Time
+	ResolvedAt        pgtype.Timestamptz
+	PromotedTanzakuID pgtype.UUID
 }
 
 type Record struct {
@@ -50,6 +85,17 @@ type Record struct {
 	DeletedAt pgtype.Timestamptz
 }
 
+type Report struct {
+	ID         uuid.UUID
+	TanzakuID  uuid.UUID
+	ReporterID uuid.UUID
+	Reason     string
+	Note       *string
+	CreatedAt  time.Time
+	ResolvedAt pgtype.Timestamptz
+	Resolution *string
+}
+
 type Tanzaku struct {
 	ID         uuid.UUID
 	AuthorID   pgtype.UUID
@@ -58,6 +104,13 @@ type Tanzaku struct {
 	Status     string
 	PooledAt   time.Time
 	IsOfficial bool
+}
+
+type TanzakuOrigin struct {
+	TanzakuID      uuid.UUID
+	AuthorID       uuid.UUID
+	SourceRecordID pgtype.UUID
+	CreatedAt      time.Time
 }
 
 type User struct {
