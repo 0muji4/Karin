@@ -1,6 +1,8 @@
 package app.karin.di
 
 import android.content.Context
+import app.karin.data.PrefsReadStateStore
+import app.karin.data.ReadStateStore
 import app.karin.shared.api.DefaultKarinRepository
 import app.karin.shared.api.KarinRepository
 import app.karin.shared.auth.EncryptedTokenStore
@@ -15,6 +17,7 @@ class AppContainer(context: Context) {
     val client: KarinClient = KarinClient(BASE_URL, tokenStore)
     val sessionRepository: SessionRepository = SessionRepository(client, tokenStore)
     val repository: KarinRepository = DefaultKarinRepository(client)
+    val readState: ReadStateStore = PrefsReadStateStore(context.applicationContext)
 
     companion object {
         // 接続先はビルド設定（BuildConfig.BASE_URL）で決まる。既定はエミュレータ用の 10.0.2.2、

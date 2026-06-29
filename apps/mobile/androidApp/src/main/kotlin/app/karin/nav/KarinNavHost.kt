@@ -12,11 +12,16 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import app.karin.di.AppContainer
+import app.karin.shared.api.ReceivedCard
 import app.karin.ui.account.AccountViewModel
 import app.karin.ui.box.BoxViewModel
 import app.karin.ui.cast.CastViewModel
+import app.karin.ui.deliveries.ChimeViewModel
+import app.karin.ui.deliveries.DeliveriesViewModel
 import app.karin.ui.screen.BoxScreen
 import app.karin.ui.screen.CastScreen
+import app.karin.ui.screen.ChimeScreen
+import app.karin.ui.screen.DeliveriesScreen
 import app.karin.ui.screen.OnboardingScreen
 import app.karin.ui.screen.SentScreen
 import app.karin.ui.screen.SplashScreen
@@ -62,6 +67,7 @@ fun KarinNavHost(container: AppContainer) {
                 onReload = vm::load,
                 onWrite = { nav.navigate(Routes.WRITE) },
                 onBox = { nav.navigate(Routes.BOX) },
+                onDeliveries = { nav.navigate(Routes.DELIVERIES) },
             )
         }
         composable(Routes.WRITE) {
@@ -98,6 +104,39 @@ fun KarinNavHost(container: AppContainer) {
         }
         composable(Routes.SENT) {
             SentScreen(onHome = { nav.popBackStack(Routes.HOME, inclusive = false) })
+        }
+        composable(Routes.DELIVERIES) {
+            val vm: DeliveriesViewModel = viewModel(
+                factory = viewModelFactory { initializer { DeliveriesViewModel(container.repository, container.readState) } },
+            )
+            val state by vm.state.collectAsStateWithLifecycle()
+            DeliveriesScreen(
+                state = state,
+                onOpen = { card ->
+                    nav.currentBackStackEntry?.savedStateHandle?.set("openedCard", card)
+                    nav.navigate(Routes.CHIME)
+                },
+                onBack = { nav.popBackStack() },
+            )
+        }
+        composable(Routes.CHIME) {
+            val vm: ChimeViewModel = viewModel(
+                factory = viewModelFactory { initializer { ChimeViewModel(container.repository) } },
+            )
+            val state by vm.state.collectAsStateWithLifecycle()
+            val card = remember { nav.previousBackStackEntry?.savedStateHandle?.get<ReceivedCard>("openedCard") }
+            if (card == null) {
+                LaunchedEffect(Unit) { nav.popBackStack() }
+            } else {
+                ChimeScreen(
+                    card = card,
+                    state = state,
+                    onOpened = { container.readState.markOpened(card.tanzakuId) },
+                    onKeep = vm::keep,
+                    onDone = { nav.popBackStack(Routes.DELIVERIES, inclusive = false) },
+                    onBack = { nav.popBackStack() },
+                )
+            }
         }
         composable(Routes.BOX) {
             val vm: BoxViewModel = viewModel(
