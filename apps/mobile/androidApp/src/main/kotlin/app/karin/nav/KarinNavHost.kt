@@ -19,6 +19,8 @@ import app.karin.di.AppContainer
 import app.karin.ui.account.AccountViewModel
 import app.karin.ui.screen.OnboardingScreen
 import app.karin.ui.screen.SplashScreen
+import app.karin.ui.screen.TodayScreen
+import app.karin.ui.today.TodayViewModel
 
 // アプリのナビゲーション。起動→（在席なら本編／初回ならオンボ）。オンボ完了でアカウントを発行し本編へ。
 @Composable
@@ -47,7 +49,20 @@ fun KarinNavHost(container: AppContainer) {
                 error = (state as? AccountViewModel.State.Error)?.message,
             )
         }
-        composable(Routes.HOME) { Placeholder("今日の候（準備中）") }
+        composable(Routes.HOME) {
+            val vm: TodayViewModel = viewModel(
+                factory = viewModelFactory { initializer { TodayViewModel(container.repository) } },
+            )
+            val state by vm.state.collectAsStateWithLifecycle()
+            TodayScreen(
+                state = state,
+                onReload = vm::load,
+                onWrite = { nav.navigate(Routes.WRITE) },
+                onBox = { nav.navigate(Routes.BOX) },
+            )
+        }
+        composable(Routes.WRITE) { Placeholder("短冊を書く（準備中）") }
+        composable(Routes.BOX) { Placeholder("文箱（準備中）") }
     }
 }
 

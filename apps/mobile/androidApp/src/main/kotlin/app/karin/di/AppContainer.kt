@@ -1,6 +1,8 @@
 package app.karin.di
 
 import android.content.Context
+import app.karin.shared.api.DefaultKarinRepository
+import app.karin.shared.api.KarinRepository
 import app.karin.shared.auth.EncryptedTokenStore
 import app.karin.shared.auth.TokenStore
 import app.karin.shared.net.KarinClient
@@ -12,6 +14,7 @@ class AppContainer(context: Context) {
     val tokenStore: TokenStore = EncryptedTokenStore(context.applicationContext)
     val client: KarinClient = KarinClient(BASE_URL, tokenStore)
     val sessionRepository: SessionRepository = SessionRepository(client, tokenStore)
+    val repository: KarinRepository = DefaultKarinRepository(client)
 
     companion object {
         // debug 既定はエミュレータ→ホストのループバック。実機/本番ではビルド設定で差し替える。
