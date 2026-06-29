@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -26,7 +27,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.karin.shared.api.ReceivedCard
 import app.karin.shared.ko.KoCatalog
-import app.karin.ui.component.VerticalText
+import app.karin.ui.component.TanzakuCard
 import app.karin.ui.deliveries.ChimeViewModel
 
 // 通報理由。バックエンドの CHECK と一致するコードに、日本語ラベルを添える。
@@ -85,7 +86,10 @@ fun ChimeScreen(
         }
 
         Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-            VerticalText(text = card.body)
+            TanzakuCard(
+                text = card.body,
+                modifier = Modifier.fillMaxHeight(0.72f).fillMaxWidth(0.52f),
+            )
         }
 
         Text(
