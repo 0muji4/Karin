@@ -109,8 +109,19 @@ fun ChimeScreen(
             Text(state.message, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
         }
         Spacer(Modifier.height(16.dp))
-        Button(onClick = { onKeep(card.tanzakuId) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
-            Text("文箱にしまう")
+        // 既にしまった一枚は文箱に複製済み（しまう操作は冪等）。重ねてしまわせず、その旨だけ示す。
+        if (card.kept) {
+            Text(
+                "文箱にしまいました",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center,
+            )
+        } else {
+            Button(onClick = { onKeep(card.tanzakuId) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+                Text("文箱にしまう")
+            }
         }
     }
 }

@@ -4,6 +4,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
@@ -111,6 +113,8 @@ fun KarinNavHost(container: AppContainer) {
                 factory = viewModelFactory { initializer { DeliveriesViewModel(container.repository, container.readState) } },
             )
             val state by vm.state.collectAsStateWithLifecycle()
+            // 表示・復帰のたびに読み直す。文箱にしまった結果（kept）や新着配信を戻った時に反映する。
+            LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { vm.load() }
             DeliveriesScreen(
                 state = state,
                 onOpen = { card ->

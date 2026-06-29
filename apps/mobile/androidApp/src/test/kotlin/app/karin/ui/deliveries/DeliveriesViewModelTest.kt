@@ -53,6 +53,7 @@ class DeliveriesViewModelTest {
             repo(listOf(card("a"), card("b"), card("c"))),
             readState(setOf("b")), // b は開封済み
         )
+        vm.load() // 読み込みは画面表示時に呼ぶ設計（init では走らない）
         advanceUntilIdle()
         val s = vm.state.value
         assertTrue(s is DeliveriesViewModel.State.Loaded)
@@ -65,6 +66,7 @@ class DeliveriesViewModelTest {
     @Test
     fun 受信ゼロは未読ゼロ() = runTest {
         val vm = DeliveriesViewModel(repo(emptyList()), readState(emptySet()))
+        vm.load() // 読み込みは画面表示時に呼ぶ設計（init では走らない）
         advanceUntilIdle()
         val s = vm.state.value
         assertTrue(s is DeliveriesViewModel.State.Loaded)
