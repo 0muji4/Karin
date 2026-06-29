@@ -20,7 +20,9 @@ import app.karin.ui.account.AccountViewModel
 import app.karin.ui.screen.OnboardingScreen
 import app.karin.ui.screen.SplashScreen
 import app.karin.ui.screen.TodayScreen
+import app.karin.ui.screen.WriteScreen
 import app.karin.ui.today.TodayViewModel
+import app.karin.ui.write.WriteViewModel
 
 // アプリのナビゲーション。起動→（在席なら本編／初回ならオンボ）。オンボ完了でアカウントを発行し本編へ。
 @Composable
@@ -61,7 +63,18 @@ fun KarinNavHost(container: AppContainer) {
                 onBox = { nav.navigate(Routes.BOX) },
             )
         }
-        composable(Routes.WRITE) { Placeholder("短冊を書く（準備中）") }
+        composable(Routes.WRITE) {
+            val vm: WriteViewModel = viewModel(
+                factory = viewModelFactory { initializer { WriteViewModel(container.repository) } },
+            )
+            val state by vm.state.collectAsStateWithLifecycle()
+            WriteScreen(
+                state = state,
+                onSave = vm::save,
+                onSaved = { nav.popBackStack(Routes.HOME, inclusive = false) },
+                onBack = { nav.popBackStack() },
+            )
+        }
         composable(Routes.BOX) { Placeholder("文箱（準備中）") }
     }
 }
