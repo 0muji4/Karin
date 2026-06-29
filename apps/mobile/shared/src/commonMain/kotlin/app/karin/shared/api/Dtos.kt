@@ -67,3 +67,29 @@ data class CastResponse(val status: String, val support: SupportInfo? = null)
 
 @Serializable
 data class SupportInfo(val message: String, val url: String)
+
+// 受信した一枚（風だより）。著者は配信時に剥がされるため tanzaku_id で識別する（著者は辿れない）。
+@Serializable
+data class ReceivedCard(
+    @SerialName("tanzaku_id") val tanzakuId: String,
+    val body: String,
+    val ko: Int,
+    @SerialName("is_official") val isOfficial: Boolean,
+    @SerialName("delivered_on") val deliveredOn: String,
+    val kept: Boolean,
+)
+
+@Serializable
+data class DeliveriesResponse(val received: List<ReceivedCard>)
+
+// 通報。reason はバックエンドの CHECK と同じ集合（UI で選ばせる）。note は任意。
+@Serializable
+data class ReportRequest(
+    @SerialName("tanzaku_id") val tanzakuId: String,
+    val reason: String,
+    val note: String = "",
+)
+
+// status だけを返すエンドポイント（keep / reports）の応答。
+@Serializable
+data class StatusResponse(val status: String)

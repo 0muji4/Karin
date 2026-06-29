@@ -2,8 +2,10 @@ package app.karin.ui.cast
 
 import app.karin.shared.api.BoxResponse
 import app.karin.shared.api.CastResponse
+import app.karin.shared.api.DeliveriesResponse
 import app.karin.shared.api.KarinRepository
 import app.karin.shared.api.RecordDto
+import app.karin.shared.api.StatusResponse
 import app.karin.shared.api.SupportInfo
 import app.karin.shared.api.TodayResponse
 import kotlinx.coroutines.Dispatchers
@@ -34,6 +36,9 @@ private fun repo(
     }
     override suspend fun listBox(): BoxResponse = error("未使用")
     override suspend fun cast(recordId: String): CastResponse = castResult
+    override suspend fun listDeliveries(): DeliveriesResponse = error("未使用")
+    override suspend fun keep(tanzakuId: String): StatusResponse = error("未使用")
+    override suspend fun report(tanzakuId: String, reason: String, note: String): StatusResponse = error("未使用")
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)

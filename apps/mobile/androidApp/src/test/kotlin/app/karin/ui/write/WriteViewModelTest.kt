@@ -2,8 +2,10 @@ package app.karin.ui.write
 
 import app.karin.shared.api.BoxResponse
 import app.karin.shared.api.CastResponse
+import app.karin.shared.api.DeliveriesResponse
 import app.karin.shared.api.KarinRepository
 import app.karin.shared.api.RecordDto
+import app.karin.shared.api.StatusResponse
 import app.karin.shared.api.TodayResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -23,6 +25,9 @@ private fun repo(create: suspend (String) -> RecordDto) = object : KarinReposito
     override suspend fun createRecord(body: String, koWritten: Int?): RecordDto = create(body)
     override suspend fun listBox(): BoxResponse = error("未使用")
     override suspend fun cast(recordId: String): CastResponse = error("未使用")
+    override suspend fun listDeliveries(): DeliveriesResponse = error("未使用")
+    override suspend fun keep(tanzakuId: String): StatusResponse = error("未使用")
+    override suspend fun report(tanzakuId: String, reason: String, note: String): StatusResponse = error("未使用")
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
