@@ -1,10 +1,15 @@
 # Issue / PR / コミットのタイトルに付ける許可カテゴリ。詳細は CONTRIBUTING.md を参照。
-# validate_pr.sh と validate_issue_title.sh が唯一の出どころとして参照する。複合は "/" でつなぐ（例: [App/Server]）。
+# validate_pr.sh と validate_issue_title.sh が唯一の出どころとして参照する。複合は "/" でつなぐ（例: [Server/Infra]）。
 #
 # 注意: 各カテゴリ行にインラインコメント（# ...）を付けないこと。
 #       パーサが "- 名前" を抽出するため、行内に # を混ぜると名前が壊れる。
+#
+# モバイルは層で分ける（共有コアと各 OS の UI を混ぜない）。Android=androidApp、iOS=iosApp、
+# Shared=shared(commonMain)。かつて単一クライアント時代に使った App は退役（過去コミットの履歴にのみ残る）。
 categories:
-  - App
+  - Android
+  - iOS
+  - Shared
   - Server
   - Infra
   - Data
