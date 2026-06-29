@@ -102,4 +102,34 @@ class KarinApiTest {
         assertEquals("cast", res.status)
         assertEquals(null, res.support)
     }
+
+    @Test
+    fun listDeliveries_は受信一覧を読む() = runTest {
+        val json = """{"received":[{"tanzaku_id":"t-1","body":"青梅","ko":29,"is_official":false,"delivered_on":"2026-06-29","kept":false}]}"""
+        val res = client(body = json).listDeliveries()
+        assertEquals(1, res.received.size)
+        assertEquals("t-1", res.received.first().tanzakuId)
+        assertEquals(false, res.received.first().kept)
+    }
+
+    @Test
+    fun keep_は当該tanzakuへ_POSTする() = runTest {
+        val seen = mutableListOf<String>()
+        val c = client(HttpStatusCode.OK, """{"status":"kept"}""") { seen += it.url.encodedPath }
+        val res = c.keep("t-1")
+        assertEquals("kept", res.status)
+        assertTrue(seen.single().endsWith("/deliveries/t-1/keep"))
+    }
+
+    @Test
+    fun report_は_tanzaku_id_と_reason_を送る() = runTest {
+        var sent = ""
+        val c = client(HttpStatusCode.OK, """{"status":"reported"}""") {
+            sent = (it.body as OutgoingContent.ByteArrayContent).bytes().decodeToString()
+        }
+        val res = c.report("t-1", "harassment", "ひどい")
+        assertEquals("reported", res.status)
+        assertTrue(sent.contains("t-1"))
+        assertTrue(sent.contains("harassment"))
+    }
 }

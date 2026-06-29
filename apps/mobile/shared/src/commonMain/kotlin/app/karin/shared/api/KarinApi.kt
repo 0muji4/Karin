@@ -31,6 +31,18 @@ suspend fun KarinClient.listBox(): BoxResponse =
 suspend fun KarinClient.castToWind(recordId: String): CastResponse =
     call { http.post("records/$recordId/cast") }
 
+// 受信した一枚（風だより）の一覧を取る。
+suspend fun KarinClient.listDeliveries(): DeliveriesResponse =
+    call { http.get("deliveries") }
+
+// 受信した一枚を文箱にしまう（{id} は tanzaku_id）。
+suspend fun KarinClient.keep(tanzakuId: String): StatusResponse =
+    call { http.post("deliveries/$tanzakuId/keep") }
+
+// 受信した一枚を通報する。reason は固定集合、note は任意。
+suspend fun KarinClient.report(tanzakuId: String, reason: String, note: String): StatusResponse =
+    call { http.post("reports") { setBody(ReportRequest(tanzakuId = tanzakuId, reason = reason, note = note)) } }
+
 // call は送受信→エラー正規化→本文デコードを一括で行う。通信失敗は Network、解釈失敗は Decode に寄せる。
 private suspend inline fun <reified T> KarinClient.call(block: () -> HttpResponse): T {
     val response = try {
