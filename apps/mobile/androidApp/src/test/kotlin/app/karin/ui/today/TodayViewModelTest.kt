@@ -1,6 +1,7 @@
 package app.karin.ui.today
 
 import app.karin.shared.api.BoxResponse
+import app.karin.shared.api.CastResponse
 import app.karin.shared.api.KarinRepository
 import app.karin.shared.api.KoDto
 import app.karin.shared.api.RecordDto
@@ -32,6 +33,7 @@ private fun repo(today: suspend () -> TodayResponse) = object : KarinRepository 
     override suspend fun todayKo(): TodayResponse = today()
     override suspend fun createRecord(body: String, koWritten: Int?): RecordDto = error("未使用")
     override suspend fun listBox(): BoxResponse = error("未使用")
+    override suspend fun cast(recordId: String): CastResponse = error("未使用")
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)

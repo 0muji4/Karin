@@ -87,4 +87,19 @@ class KarinApiTest {
         val c = client(HttpStatusCode.Unauthorized, "")
         assertFailsWith<KarinError.Unauthorized> { c.listBox() }
     }
+
+    @Test
+    fun cast_は危機時に支援先を読む() = runTest {
+        val json = """{"status":"cast","support":{"message":"つらいときは","url":"https://example/support"}}"""
+        val res = client(body = json).castToWind("r-1")
+        assertEquals("cast", res.status)
+        assertEquals("https://example/support", res.support?.url)
+    }
+
+    @Test
+    fun cast_は通常は支援先なし() = runTest {
+        val res = client(body = """{"status":"cast"}""").castToWind("r-9")
+        assertEquals("cast", res.status)
+        assertEquals(null, res.support)
+    }
 }
