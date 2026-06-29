@@ -28,10 +28,8 @@ class DeliveriesViewModel(
     private val _state = MutableStateFlow<State>(State.Loading)
     val state: StateFlow<State> = _state.asStateFlow()
 
-    init {
-        load()
-    }
-
+    // 読み込みは画面の表示（ON_RESUME）から呼ぶ。風だよりは別画面での操作（文箱にしまう）や
+    // 新着配信を、戻ってきた時に反映する必要があるため、VM 生成時ではなく表示のたびに読み直す。
     fun load() {
         _state.value = State.Loading
         viewModelScope.launch {
