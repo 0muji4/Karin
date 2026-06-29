@@ -27,6 +27,10 @@ suspend fun KarinClient.createRecord(req: CreateRecordRequest): RecordDto =
 suspend fun KarinClient.listBox(): BoxResponse =
     call { http.get("box") }
 
+// 記録を風に乗せる（公開プールへ流す）。応答は一律 status="cast"。危機判定時のみ support が付く。
+suspend fun KarinClient.castToWind(recordId: String): CastResponse =
+    call { http.post("records/$recordId/cast") }
+
 // call は送受信→エラー正規化→本文デコードを一括で行う。通信失敗は Network、解釈失敗は Decode に寄せる。
 private suspend inline fun <reified T> KarinClient.call(block: () -> HttpResponse): T {
     val response = try {

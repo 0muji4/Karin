@@ -9,6 +9,7 @@ interface KarinRepository {
     suspend fun todayKo(): TodayResponse
     suspend fun createRecord(body: String, koWritten: Int? = null): RecordDto
     suspend fun listBox(): BoxResponse
+    suspend fun cast(recordId: String): CastResponse
 }
 
 class DefaultKarinRepository(private val client: KarinClient) : KarinRepository {
@@ -18,4 +19,6 @@ class DefaultKarinRepository(private val client: KarinClient) : KarinRepository 
         client.createRecord(CreateRecordRequest(body = body, koWritten = koWritten))
 
     override suspend fun listBox(): BoxResponse = client.listBox()
+
+    override suspend fun cast(recordId: String): CastResponse = client.castToWind(recordId)
 }

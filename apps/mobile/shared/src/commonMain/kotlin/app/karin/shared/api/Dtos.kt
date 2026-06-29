@@ -59,3 +59,11 @@ data class BoxGroupDto(
 
 @Serializable
 data class BoxResponse(val groups: List<BoxGroupDto>)
+
+// 風に乗せる応答。判定結果は著者に見せないため一律 status="cast"。
+// 例外として危機（自傷）と判定したときだけ support（支援先の案内）が付く。
+@Serializable
+data class CastResponse(val status: String, val support: SupportInfo? = null)
+
+@Serializable
+data class SupportInfo(val message: String, val url: String)

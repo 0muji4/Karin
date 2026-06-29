@@ -2,6 +2,7 @@ package app.karin.ui.box
 
 import app.karin.shared.api.BoxGroupDto
 import app.karin.shared.api.BoxResponse
+import app.karin.shared.api.CastResponse
 import app.karin.shared.api.KarinRepository
 import app.karin.shared.api.RecordDto
 import app.karin.shared.api.SekkiDto
@@ -24,6 +25,7 @@ private fun repo(box: suspend () -> BoxResponse) = object : KarinRepository {
     override suspend fun todayKo(): TodayResponse = error("未使用")
     override suspend fun createRecord(body: String, koWritten: Int?): RecordDto = error("未使用")
     override suspend fun listBox(): BoxResponse = box()
+    override suspend fun cast(recordId: String): CastResponse = error("未使用")
 }
 
 private fun record(id: String, ko: Int) = RecordDto(id, ko, "本文", "2026-06-29T00:00:00Z")
