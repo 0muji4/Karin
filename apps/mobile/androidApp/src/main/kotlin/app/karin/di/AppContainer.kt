@@ -17,7 +17,8 @@ class AppContainer(context: Context) {
     val repository: KarinRepository = DefaultKarinRepository(client)
 
     companion object {
-        // debug 既定はエミュレータ→ホストのループバック。実機/本番ではビルド設定で差し替える。
-        const val BASE_URL = "http://10.0.2.2:8080/"
+        // 接続先はビルド設定（BuildConfig.BASE_URL）で決まる。既定はエミュレータ用の 10.0.2.2、
+        // 実機は local.properties の karinBaseUrl に LAN IP を書いて差し替える。
+        val BASE_URL: String = app.karin.BuildConfig.BASE_URL
     }
 }
