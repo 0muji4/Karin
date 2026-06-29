@@ -29,13 +29,15 @@
 
 - **1 PR = 1 commit**: PR は必ず 1 コミットにまとめる（複数になったら squash する）。
 - **コミット件名 = PR タイトル**: コミットの件名は PR タイトルで始め、末尾はピリオドにする。
-  - 例: PR タイトル `[App] 今日の候を表示する画面を追加` → コミット件名 `[App] 今日の候を表示する画面を追加.`
-- **カテゴリ接頭辞**: Issue・PR のタイトルは `[カテゴリ]` で始める。許可カテゴリは [hack/prefix.yaml](hack/prefix.yaml) を唯一の出どころとして管理する（`App` / `Server` / `Infra` / `Data` / `Docs` / `CI/CD` / `Chore`。複合は `[App/Server]`）。
+  - 例: PR タイトル `[Android] 今日の候を表示する画面を追加` → コミット件名 `[Android] 今日の候を表示する画面を追加.`
+- **カテゴリ接頭辞**: Issue・PR のタイトルは `[カテゴリ]` で始める。許可カテゴリは [hack/prefix.yaml](hack/prefix.yaml) を唯一の出どころとして管理する（`Android` / `iOS` / `Shared` / `Server` / `Infra` / `Data` / `Docs` / `CI/CD` / `Chore`。複合は `[Server/Infra]` のように `/` でつなぐ）。
 - **Issue との紐付け**: PR 本文で `Closes #<番号>` 等の closing キーワードを使い、対応 Issue を必ず参照する（マージで Issue が閉じる）。
 
 ### カテゴリの使い分け
 
-- `App` … モバイルクライアント（ユーザー向けの体験。Flutter / 各 OS ネイティブ）。
+- `Android` … Android クライアント（`androidApp/`。Jetpack Compose の UI 層）。
+- `iOS` … iOS クライアント（`iosApp/`。SwiftUI の UI 層）。
+- `Shared` … モバイル共有コア（`shared/` commonMain。KMP の通信・モデル・候カタログ等を Android/iOS で再利用）。共有コアと各 OS の UI は層を分け、別 PR にする（混ぜない）。
 - `Server` … Go バックエンド。API・匿名認証・記録の保存・未配信プール・日次マッチャ・関門の制御・DB スキーマはここに含める。
 - `Infra` … クラウド・デプロイ・マネージド PostgreSQL・スケジュール実行など、アプリケーションのロジックの外側の土台。
 - `Data` … 七十二候データセット（候の読み・意味・季節の読み物などのコンテンツ）。第0段階の主な作業。
