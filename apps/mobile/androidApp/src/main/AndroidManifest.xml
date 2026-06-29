@@ -4,9 +4,11 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
+        android:name=".KarinApplication"
         android:allowBackup="true"
         android:label="夏鈴"
         android:supportsRtl="true"
+        android:usesCleartextTraffic="true"
         android:theme="@style/Theme.Karin">
         <activity
             android:name=".MainActivity"
