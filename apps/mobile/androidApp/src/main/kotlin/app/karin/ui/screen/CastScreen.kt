@@ -5,10 +5,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -21,7 +23,10 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.karin.ui.cast.CastViewModel
-import app.karin.ui.component.VerticalText
+import app.karin.ui.component.TanzakuCard
+
+// ピル型ボタン。
+private val pill = RoundedCornerShape(percent = 50)
 
 // 07 風に乗せる。送る前の最終確認。経路と相互性を伝え、確定で公開プールへ流す。
 // 判定は著者に見せないため、成功（support なし）は黙って 08 へ。危機（support あり）のときだけ
@@ -57,11 +62,15 @@ fun CastScreen(
                 val uriHandler = LocalUriHandler.current
                 TextButton(onClick = { uriHandler.openUri(support.url) }) { Text("相談できる窓口をひらく") }
             }
-            Button(onClick = onHome, modifier = Modifier.fillMaxWidth()) { Text("今日へもどる") }
+            Button(onClick = onHome, shape = pill, modifier = Modifier.fillMaxWidth()) { Text("今日へもどる") }
         } else {
             Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                VerticalText(text = body)
+                TanzakuCard(
+                    text = body,
+                    modifier = Modifier.fillMaxHeight(0.72f).fillMaxWidth(0.52f),
+                )
             }
+            Spacer(Modifier.height(16.dp))
             Text(
                 "あなたの一枚が、数日のうちに別の誰かへ。\n出さなければ、受け取れない。",
                 style = MaterialTheme.typography.bodyMedium,
@@ -74,7 +83,7 @@ fun CastScreen(
                 Text(state.message, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
             }
             Spacer(Modifier.height(16.dp))
-            Button(onClick = onConfirm, enabled = !casting, modifier = Modifier.fillMaxWidth()) {
+            Button(onClick = onConfirm, enabled = !casting, shape = pill, modifier = Modifier.fillMaxWidth()) {
                 Text("この一枚を、風に乗せる")
             }
         }

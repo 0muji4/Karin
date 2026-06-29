@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -32,6 +33,6 @@ fun SentScreen(onHome: () -> Unit) {
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(40.dp))
-        OutlinedButton(onClick = onHome) { Text("今日へもどる") }
+        OutlinedButton(onClick = onHome, shape = RoundedCornerShape(percent = 50)) { Text("今日へもどる") }
     }
 }
