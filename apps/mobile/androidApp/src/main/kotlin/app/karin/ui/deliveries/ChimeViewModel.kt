@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-// ChimeViewModel は受信した一枚を文箱にしまう操作を司る（開封状態は画面側でローカルに記録する）。
+// ChimeViewModel は受信した一枚を文箱にしまう／通報する操作を司る（開封状態は画面側でローカルに記録）。
 class ChimeViewModel(private val repo: KarinRepository) : ViewModel() {
 
     sealed interface State {
@@ -18,8 +18,18 @@ class ChimeViewModel(private val repo: KarinRepository) : ViewModel() {
         data class Error(val message: String) : State
     }
 
+    sealed interface ReportState {
+        data object Idle : ReportState
+        data object Reporting : ReportState
+        data object Reported : ReportState
+        data class Error(val message: String) : ReportState
+    }
+
     private val _state = MutableStateFlow<State>(State.Idle)
     val state: StateFlow<State> = _state.asStateFlow()
+
+    private val _reportState = MutableStateFlow<ReportState>(ReportState.Idle)
+    val reportState: StateFlow<ReportState> = _reportState.asStateFlow()
 
     fun keep(tanzakuId: String) {
         if (_state.value is State.Keeping || _state.value is State.Kept) return
@@ -29,6 +39,18 @@ class ChimeViewModel(private val repo: KarinRepository) : ViewModel() {
                 .fold(
                     onSuccess = { State.Kept },
                     onFailure = { State.Error(it.message ?: "文箱にしまえませんでした") },
+                )
+        }
+    }
+
+    fun report(tanzakuId: String, reason: String) {
+        if (_reportState.value is ReportState.Reporting || _reportState.value is ReportState.Reported) return
+        _reportState.value = ReportState.Reporting
+        viewModelScope.launch {
+            _reportState.value = runCatching { repo.report(tanzakuId, reason, "") }
+                .fold(
+                    onSuccess = { ReportState.Reported },
+                    onFailure = { ReportState.Error(it.message ?: "通報を受け付けられませんでした") },
                 )
         }
     }

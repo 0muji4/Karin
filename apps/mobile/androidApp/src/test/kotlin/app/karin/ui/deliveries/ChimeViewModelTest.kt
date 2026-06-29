@@ -19,7 +19,12 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertTrue
 
-private fun repo(keepThrows: Boolean = false, onKeep: (String) -> Unit = {}) = object : KarinRepository {
+private fun repo(
+    keepThrows: Boolean = false,
+    onKeep: (String) -> Unit = {},
+    reportThrows: Boolean = false,
+    onReport: (String, String) -> Unit = { _, _ -> },
+) = object : KarinRepository {
     override suspend fun todayKo(): TodayResponse = error("未使用")
     override suspend fun createRecord(body: String, koWritten: Int?): RecordDto = error("未使用")
     override suspend fun listBox(): BoxResponse = error("未使用")
@@ -30,7 +35,11 @@ private fun repo(keepThrows: Boolean = false, onKeep: (String) -> Unit = {}) = o
         onKeep(tanzakuId)
         return StatusResponse("kept")
     }
-    override suspend fun report(tanzakuId: String, reason: String, note: String): StatusResponse = error("未使用")
+    override suspend fun report(tanzakuId: String, reason: String, note: String): StatusResponse {
+        if (reportThrows) throw RuntimeException("boom")
+        onReport(tanzakuId, reason)
+        return StatusResponse("reported")
+    }
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -57,5 +66,23 @@ class ChimeViewModelTest {
         vm.keep("t-1")
         advanceUntilIdle()
         assertTrue(vm.state.value is ChimeViewModel.State.Error)
+    }
+
+    @Test
+    fun 通報すると理由つきで_Reported() = runTest {
+        var seen: Pair<String, String>? = null
+        val vm = ChimeViewModel(repo(onReport = { id, reason -> seen = id to reason }))
+        vm.report("t-1", "harassment")
+        advanceUntilIdle()
+        assertTrue(vm.reportState.value is ChimeViewModel.ReportState.Reported)
+        assertTrue(seen == ("t-1" to "harassment"))
+    }
+
+    @Test
+    fun 通報失敗で_ReportState_Error() = runTest {
+        val vm = ChimeViewModel(repo(reportThrows = true))
+        vm.report("t-1", "spam")
+        advanceUntilIdle()
+        assertTrue(vm.reportState.value is ChimeViewModel.ReportState.Error)
     }
 }

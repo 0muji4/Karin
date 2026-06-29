@@ -124,6 +124,7 @@ fun KarinNavHost(container: AppContainer) {
                 factory = viewModelFactory { initializer { ChimeViewModel(container.repository) } },
             )
             val state by vm.state.collectAsStateWithLifecycle()
+            val reportState by vm.reportState.collectAsStateWithLifecycle()
             val card = remember { nav.previousBackStackEntry?.savedStateHandle?.get<ReceivedCard>("openedCard") }
             if (card == null) {
                 LaunchedEffect(Unit) { nav.popBackStack() }
@@ -131,8 +132,10 @@ fun KarinNavHost(container: AppContainer) {
                 ChimeScreen(
                     card = card,
                     state = state,
+                    reportState = reportState,
                     onOpened = { container.readState.markOpened(card.tanzakuId) },
                     onKeep = vm::keep,
+                    onReport = { reason -> vm.report(card.tanzakuId, reason) },
                     onDone = { nav.popBackStack(Routes.DELIVERIES, inclusive = false) },
                     onBack = { nav.popBackStack() },
                 )
