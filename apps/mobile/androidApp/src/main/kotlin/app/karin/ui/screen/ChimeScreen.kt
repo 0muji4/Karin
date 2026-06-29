@@ -110,11 +110,12 @@ fun ChimeScreen(
         }
         Spacer(Modifier.height(16.dp))
         // 既にしまった一枚は文箱に複製済み（しまう操作は冪等）。重ねてしまわせず、その旨だけ示す。
+        // 弱い注記色だと背景に沈み、無効化された残りものに見えるため、墨色の一文として静かに据える。
         if (card.kept) {
             Text(
                 "文箱にしまいました",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.Center,
             )
