@@ -1,5 +1,6 @@
 package app.karin.ui.screen
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -76,11 +78,14 @@ private fun SekkiGroup(group: BoxGroupDto) {
 
 @Composable
 private fun TanzakuCard(record: RecordDto) {
+    // 短冊らしい縦長の細い札。幅は列数に応じて伸び、高さは固定して列がはみ出さないようにする。
     Surface(
         color = MaterialTheme.colorScheme.surface,
-        modifier = Modifier.widthIn(min = 96.dp).height(220.dp),
+        shape = RoundedCornerShape(3.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)),
+        modifier = Modifier.widthIn(min = 56.dp).height(300.dp),
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 16.dp)) {
             VerticalText(text = record.body, modifier = Modifier.weight(1f))
             Spacer(Modifier.height(8.dp))
             Text(
