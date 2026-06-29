@@ -1,13 +1,8 @@
 package app.karin.nav
 
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
@@ -17,6 +12,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import app.karin.di.AppContainer
 import app.karin.ui.account.AccountViewModel
+import app.karin.ui.box.BoxViewModel
+import app.karin.ui.screen.BoxScreen
 import app.karin.ui.screen.OnboardingScreen
 import app.karin.ui.screen.SplashScreen
 import app.karin.ui.screen.TodayScreen
@@ -75,11 +72,12 @@ fun KarinNavHost(container: AppContainer) {
                 onBack = { nav.popBackStack() },
             )
         }
-        composable(Routes.BOX) { Placeholder("文箱（準備中）") }
+        composable(Routes.BOX) {
+            val vm: BoxViewModel = viewModel(
+                factory = viewModelFactory { initializer { BoxViewModel(container.repository) } },
+            )
+            val state by vm.state.collectAsStateWithLifecycle()
+            BoxScreen(state = state, onBack = { nav.popBackStack() })
+        }
     }
-}
-
-@Composable
-private fun Placeholder(label: String) {
-    Text(text = label, modifier = Modifier.fillMaxSize().wrapContentSize(Alignment.Center))
 }
