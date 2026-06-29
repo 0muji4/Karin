@@ -3,6 +3,7 @@ package app.karin.nav
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
@@ -13,8 +14,11 @@ import androidx.navigation.compose.rememberNavController
 import app.karin.di.AppContainer
 import app.karin.ui.account.AccountViewModel
 import app.karin.ui.box.BoxViewModel
+import app.karin.ui.cast.CastViewModel
 import app.karin.ui.screen.BoxScreen
+import app.karin.ui.screen.CastScreen
 import app.karin.ui.screen.OnboardingScreen
+import app.karin.ui.screen.SentScreen
 import app.karin.ui.screen.SplashScreen
 import app.karin.ui.screen.TodayScreen
 import app.karin.ui.screen.WriteScreen
@@ -69,8 +73,31 @@ fun KarinNavHost(container: AppContainer) {
                 state = state,
                 onSave = vm::save,
                 onSaved = { nav.popBackStack(Routes.HOME, inclusive = false) },
+                onCast = { body ->
+                    // 下書き本文を次画面へ渡す（URL エンコードを避け savedStateHandle 経由）。
+                    nav.currentBackStackEntry?.savedStateHandle?.set("castBody", body)
+                    nav.navigate(Routes.CAST)
+                },
                 onBack = { nav.popBackStack() },
             )
+        }
+        composable(Routes.CAST) {
+            val vm: CastViewModel = viewModel(
+                factory = viewModelFactory { initializer { CastViewModel(container.repository) } },
+            )
+            val state by vm.state.collectAsStateWithLifecycle()
+            val body = remember { nav.previousBackStackEntry?.savedStateHandle?.get<String>("castBody").orEmpty() }
+            CastScreen(
+                body = body,
+                state = state,
+                onConfirm = { vm.cast(body) },
+                onSent = { nav.navigate(Routes.SENT) { popUpTo(Routes.HOME) { inclusive = false } } },
+                onHome = { nav.popBackStack(Routes.HOME, inclusive = false) },
+                onBack = { nav.popBackStack() },
+            )
+        }
+        composable(Routes.SENT) {
+            SentScreen(onHome = { nav.popBackStack(Routes.HOME, inclusive = false) })
         }
         composable(Routes.BOX) {
             val vm: BoxViewModel = viewModel(

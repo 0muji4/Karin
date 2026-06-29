@@ -6,5 +6,7 @@ object Routes {
     const val ONBOARDING = "onboarding"
     const val HOME = "home" // 今日の候
     const val WRITE = "write" // 短冊を書く
+    const val CAST = "cast" // 風に乗せる（確認）
+    const val SENT = "sent" // 風に乗りました（完了）
     const val BOX = "box" // 文箱
 }

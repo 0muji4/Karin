@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -30,6 +31,7 @@ fun WriteScreen(
     state: WriteViewModel.State,
     onSave: (String) -> Unit,
     onSaved: () -> Unit,
+    onCast: (String) -> Unit,
     onBack: () -> Unit,
 ) {
     var body by remember { mutableStateOf("") }
@@ -61,12 +63,14 @@ fun WriteScreen(
         }
 
         Spacer(Modifier.height(16.dp))
-        Button(
-            onClick = { onSave(body) },
-            enabled = body.isNotBlank() && !saving,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text("文箱にしまう")
+        val canSubmit = body.isNotBlank() && !saving
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            OutlinedButton(onClick = { onSave(body) }, enabled = canSubmit, modifier = Modifier.weight(1f)) {
+                Text("文箱にしまう")
+            }
+            Button(onClick = { onCast(body) }, enabled = canSubmit, modifier = Modifier.weight(1f)) {
+                Text("風に乗せる")
+            }
         }
     }
 }
