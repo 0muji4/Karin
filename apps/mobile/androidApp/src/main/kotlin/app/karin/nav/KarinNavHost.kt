@@ -12,7 +12,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import app.karin.di.AppContainer
-import app.karin.shared.api.ReceivedCard
+import app.karin.shared.api.decodeReceivedCard
+import app.karin.shared.api.encode
 import app.karin.ui.account.AccountViewModel
 import app.karin.ui.box.BoxViewModel
 import app.karin.ui.cast.CastViewModel
@@ -113,7 +114,9 @@ fun KarinNavHost(container: AppContainer) {
             DeliveriesScreen(
                 state = state,
                 onOpen = { card ->
-                    nav.currentBackStackEntry?.savedStateHandle?.set("openedCard", card)
+                    // ReceivedCard は @Serializable だが Parcelable ではないため、SavedStateHandle に
+                    // そのまま入れると落ちる。JSON 文字列に畳んで渡す（castBody と同じ「String を渡す」流儀）。
+                    nav.currentBackStackEntry?.savedStateHandle?.set("openedCard", card.encode())
                     nav.navigate(Routes.CHIME)
                 },
                 onBack = { nav.popBackStack() },
@@ -125,7 +128,9 @@ fun KarinNavHost(container: AppContainer) {
             )
             val state by vm.state.collectAsStateWithLifecycle()
             val reportState by vm.reportState.collectAsStateWithLifecycle()
-            val card = remember { nav.previousBackStackEntry?.savedStateHandle?.get<ReceivedCard>("openedCard") }
+            val card = remember {
+                nav.previousBackStackEntry?.savedStateHandle?.get<String>("openedCard")?.let(::decodeReceivedCard)
+            }
             if (card == null) {
                 LaunchedEffect(Unit) { nav.popBackStack() }
             } else {
