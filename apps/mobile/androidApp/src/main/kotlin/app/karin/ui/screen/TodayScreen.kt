@@ -28,6 +28,7 @@ fun TodayScreen(
     onReload: () -> Unit,
     onWrite: () -> Unit,
     onBox: () -> Unit,
+    onDeliveries: () -> Unit,
 ) {
     when (state) {
         is TodayViewModel.State.Loading ->
@@ -63,6 +64,7 @@ fun TodayScreen(
                 Spacer(Modifier.height(40.dp))
                 Button(onClick = onWrite, modifier = Modifier.fillMaxWidth()) { Text("今日の一枚を、短冊に") }
                 Spacer(Modifier.height(8.dp))
+                TextButton(onClick = onDeliveries) { Text("風だより") }
                 TextButton(onClick = onBox) { Text("文箱をひらく") }
             }
         }
