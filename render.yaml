@@ -27,8 +27,11 @@ services:
     region: singapore # 日本に最も近いリージョン
     plan: free
     healthCheckPath: /healthz
-    # 新版を公開する前にマイグレーションを適用する。
-    preDeployCommand: /usr/local/bin/migrate up
+    # 新版を公開する前にマイグレーションを適用する。preDeployCommand は有料プランの機能なので、
+    # 無料プランでは無効化し、マイグレーションは手動で流す（README/手順参照）:
+    #   cd apps/backend && DATABASE_URL='<Neon の接続文字列>' go run ./cmd/migrate up
+    # 有料プランに上げたら下のコメントを外すと、デプロイ前に自動適用される。
+    # preDeployCommand: /usr/local/bin/migrate up
     envVars:
       - key: DATABASE_URL # Neon の接続文字列（sslmode=require 推奨）。Secret として手動設定。
         sync: false
@@ -50,28 +53,30 @@ services:
 
   # 日次マッチャ。交換を開くまでは作成しない／スケジュールを止める（記録のみの運用）。
   # 保留の再判定で関門を使うため、有効化時は下の KARIN_LLM_* も設定する。Render の Cron Job は有料プラン。
-  - type: cron
-    name: karin-matcher
-    runtime: docker
-    rootDir: apps/backend
-    dockerfilePath: ./Dockerfile
-    dockerCommand: /usr/local/bin/matcher
-    region: singapore
-    plan: starter
-    schedule: "0 18 * * *" # 毎日 18:00 UTC = 03:00 JST
-    envVars:
-      - key: DATABASE_URL
-        sync: false
-      - key: KARIN_KO_TTL
-        value: "6"
-      # 保留の再判定で関門を使う。未設定なら AllPass。server と同じ値を設定する。
-      - key: KARIN_LLM_PROVIDER
-        sync: false
-      - key: KARIN_LLM_MODEL
-        sync: false
-      - key: KARIN_LLM_PROJECT
-        sync: false
-      - key: KARIN_LLM_LOCATION
-        sync: false
-      - key: GOOGLE_APPLICATION_CREDENTIALS
-        sync: false
+  # Render Cron は有料プランのため、無料デプロイ（記録中心の Phase 1）では無効化している。
+  # 交換を実ユーザーへ開くときに、下のコメントを外して Blueprint を再適用し、
+  # DATABASE_URL（と関門を使うなら KARIN_LLM_*）を設定する。
+  # - type: cron
+  #   name: karin-matcher
+  #   runtime: docker
+  #   rootDir: apps/backend
+  #   dockerfilePath: ./Dockerfile
+  #   dockerCommand: /usr/local/bin/matcher
+  #   region: singapore
+  #   plan: starter
+  #   schedule: "0 18 * * *" # 毎日 18:00 UTC = 03:00 JST
+  #   envVars:
+  #     - key: DATABASE_URL
+  #       sync: false
+  #     - key: KARIN_KO_TTL
+  #       value: "6"
+  #     - key: KARIN_LLM_PROVIDER
+  #       sync: false
+  #     - key: KARIN_LLM_MODEL
+  #       sync: false
+  #     - key: KARIN_LLM_PROJECT
+  #       sync: false
+  #     - key: KARIN_LLM_LOCATION
+  #       sync: false
+  #     - key: GOOGLE_APPLICATION_CREDENTIALS
+  #       sync: false
