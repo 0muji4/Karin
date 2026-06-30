@@ -92,9 +92,11 @@ fun KarinNavHost(container: AppContainer) {
             }
             composable(Routes.HOME) {
                 val vm: TodayViewModel = viewModel(
-                    factory = viewModelFactory { initializer { TodayViewModel(container.repository) } },
+                    factory = viewModelFactory { initializer { TodayViewModel(container.repository, container.readState) } },
                 )
                 val state by vm.state.collectAsStateWithLifecycle()
+                // 戻るたびに読み直し、風だよりの未読数を最新化する。
+                LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { vm.load() }
                 TodayScreen(
                     state = state,
                     onReload = vm::load,

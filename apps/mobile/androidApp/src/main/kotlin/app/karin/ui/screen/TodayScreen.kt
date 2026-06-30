@@ -1,6 +1,8 @@
 package app.karin.ui.screen
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -8,9 +10,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
@@ -21,6 +25,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -52,6 +57,7 @@ fun TodayScreen(
 
         is TodayViewModel.State.Loaded -> {
             val t = state.today
+            val unread = state.unreadCount
             Column(
                 modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 28.dp, vertical = 36.dp),
             ) {
@@ -97,28 +103,42 @@ fun TodayScreen(
                 }
 
                 Spacer(Modifier.height(20.dp))
-                NavRow("風だより", onDeliveries)
+                NavRow(
+                    label = if (unread > 0) "風だよりが、${unreadWord(unread)}届いています" else "風だより",
+                    onClick = onDeliveries,
+                    highlighted = unread > 0,
+                )
                 HorizontalDivider(color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f))
-                NavRow("文箱・これまでの一枚", onBox)
+                NavRow(label = "文箱・これまでの一枚", onClick = onBox)
             }
         }
     }
 }
 
-// ラベル＋しるし「›」の遷移行。
+// ラベル＋しるし「›」の遷移行。未読があれば紺＋ドットで知らせる。
 @Composable
-private fun NavRow(label: String, onClick: () -> Unit) {
+private fun NavRow(label: String, onClick: () -> Unit, highlighted: Boolean = false) {
+    val accent = MaterialTheme.colorScheme.primary
     Surface(onClick = onClick, color = Color.Transparent, modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onBackground)
-            Text("›", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (highlighted) {
+                    Box(Modifier.size(8.dp).clip(CircleShape).background(accent))
+                    Spacer(Modifier.width(8.dp))
+                }
+                Text(label, style = MaterialTheme.typography.bodyLarge, color = if (highlighted) accent else MaterialTheme.colorScheme.onBackground)
+            }
+            Text("›", style = MaterialTheme.typography.titleLarge, color = if (highlighted) accent else MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
+
+// 未読数の言い回し（1 は「ひとつ」、それ以外は「N つ」）。
+private fun unreadWord(n: Int): String = if (n == 1) "ひとつ" else "${n}つ"
 
 @Composable
 private fun CenteredText(text: String) {
