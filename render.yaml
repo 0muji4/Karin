@@ -19,7 +19,7 @@
 
 services:
   - type: web
-    name: karin-server
+    name: karin-dev-backend
     runtime: docker
     rootDir: apps/backend
     dockerfilePath: ./Dockerfile
@@ -57,7 +57,7 @@ services:
   # 交換を実ユーザーへ開くときに、下のコメントを外して Blueprint を再適用し、
   # DATABASE_URL（と関門を使うなら KARIN_LLM_*）を設定する。
   # - type: cron
-  #   name: karin-matcher
+  #   name: karin-dev-matcher
   #   runtime: docker
   #   rootDir: apps/backend
   #   dockerfilePath: ./Dockerfile

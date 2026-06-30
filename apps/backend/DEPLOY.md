@@ -25,9 +25,9 @@ DATABASE_URL='<Neon の接続文字列>' go run ./cmd/migrate up
 
 ## 3. Render（Web サービス）
 1. Render に GitHub リポジトリ（`0muji4/Karin`）を接続する。
-2. New → Blueprint → リポジトリを選ぶ。`render.yaml` を読み、`karin-server`（無料 Web）が作られる。
-   （cron `karin-matcher` は `render.yaml` でコメントアウト済みなので作られない。）
-3. `karin-server` の環境変数で `DATABASE_URL`（Secret）に Neon の接続文字列を設定する。
+2. New → Blueprint → リポジトリを選ぶ。`render.yaml` を読み、`karin-dev-backend`（無料 Web）が作られる。
+   （cron `karin-dev-matcher` は `render.yaml` でコメントアウト済みなので作られない。）
+3. `karin-dev-backend` の環境変数で `DATABASE_URL`（Secret）に Neon の接続文字列を設定する。
    `KARIN_LLM_*` は空のまま＝関門は AllPass。`KARIN_HTTP_ADDR` は `:10000`（render.yaml の既定）。
 4. デプロイ。ヘルスチェックは `/healthz`。
 
@@ -47,7 +47,7 @@ karinBaseUrl=https://<サービス名>.onrender.com/
 （開発時の `adb reverse`＋`localhost` は不要になる。HTTPS なので平文許可も不要。）
 
 ## 交換・関門を本番で開くとき（後日）
-- `render.yaml` の `karin-matcher`（cron）のコメントを外し、Render の有料プランで再適用する。
+- `render.yaml` の `karin-dev-matcher`（cron）のコメントを外し、Render の有料プランで再適用する。
   日次でマッチングし、プールの短冊を受信者へ配信する。
 - 関門を Vertex AI で有効化する場合は、GCP サービスアカウント JSON を Render の Secret File として
   置き、`KARIN_LLM_PROVIDER=vertex` ほか `KARIN_LLM_*` と `GOOGLE_APPLICATION_CREDENTIALS` を設定する
