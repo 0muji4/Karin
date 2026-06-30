@@ -1,14 +1,16 @@
 package app.karin.ui.screen
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.MaterialTheme
@@ -61,6 +63,7 @@ fun BoxScreen(state: BoxViewModel.State) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SekkiGroup(group: BoxGroupDto) {
     Column {
@@ -70,27 +73,24 @@ private fun SekkiGroup(group: BoxGroupDto) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(12.dp))
-        // 2列の格子。奇数の余りは空きで埋めて左寄せを保つ。
-        group.records.chunked(2).forEach { pair ->
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                pair.forEach { record ->
-                    Box(Modifier.weight(1f)) { TanzakuEntry(record) }
-                }
-                if (pair.size == 1) Spacer(Modifier.weight(1f))
-            }
-            Spacer(Modifier.height(16.dp))
+        // 細い短冊を左から並べ、入りきらなければ折り返す（短冊なので幅は固定し、横には広げない）。
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            group.records.forEach { TanzakuEntry(it) }
         }
     }
 }
 
-// 短冊一枚＋日付・候名。文箱は軽い札（細い上端線・紐穴なし・小さめ）にして格子で重くならないようにする。
+// 短冊一枚＋日付・候名。短冊は細長い札なので幅を固定（縦長比）にして、行いっぱいには広げない。
 @Composable
 private fun TanzakuEntry(record: RecordDto) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(96.dp)) {
         TanzakuCard(
             text = record.body,
-            modifier = Modifier.fillMaxWidth().height(184.dp),
-            textStyle = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.fillMaxWidth().height(236.dp),
+            textStyle = MaterialTheme.typography.bodyMedium,
             topBandHeight = 4.dp,
             showHole = false,
             elevation = 1.dp,
