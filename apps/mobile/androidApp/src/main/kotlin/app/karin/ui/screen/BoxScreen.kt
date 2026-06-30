@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,11 +27,8 @@ import app.karin.ui.component.TanzakuCard
 // 11 文箱。自分が詠んだ短冊を暦（和風月名・節気）でまとめて振り返るアーカイブ。
 // 短冊は読む面なので共有の TanzakuCard（紺帯・紐穴）で縦書きに見せ、2列の格子に並べる。
 @Composable
-fun BoxScreen(state: BoxViewModel.State, onBack: () -> Unit) {
+fun BoxScreen(state: BoxViewModel.State) {
     Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
-            TextButton(onClick = onBack) { Text("もどる") }
-        }
         when (state) {
             is BoxViewModel.State.Loading -> {
                 Text("文箱", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground)
