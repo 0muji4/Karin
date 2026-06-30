@@ -66,8 +66,8 @@ private fun SekkiGroup(group: BoxGroupDto) {
     Column {
         Text(
             "${group.wafuMonth.name}・${group.sekki.name}",
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.primary,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(12.dp))
         // 2列の格子。奇数の余りは空きで埋めて左寄せを保つ。
@@ -83,18 +83,35 @@ private fun SekkiGroup(group: BoxGroupDto) {
     }
 }
 
-// 短冊一枚＋候名。
+// 短冊一枚＋日付・候名。文箱は軽い札（細い上端線・紐穴なし・小さめ）にして格子で重くならないようにする。
 @Composable
 private fun TanzakuEntry(record: RecordDto) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        TanzakuCard(text = record.body, modifier = Modifier.fillMaxWidth().height(220.dp))
+        TanzakuCard(
+            text = record.body,
+            modifier = Modifier.fillMaxWidth().height(184.dp),
+            textStyle = MaterialTheme.typography.bodyLarge,
+            topBandHeight = 4.dp,
+            showHole = false,
+            elevation = 1.dp,
+        )
         Spacer(Modifier.height(6.dp))
         Text(
-            KoCatalog.name(record.koWritten),
+            entryLabel(record),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
+}
+
+// 「6.29　菖蒲華」のように 日付＋候名。日付が解釈できなければ候名だけ。
+private fun entryLabel(record: RecordDto): String {
+    val ko = KoCatalog.name(record.koWritten)
+    val date = runCatching {
+        val (_, m, d) = record.createdAt.take(10).split("-")
+        "${m.toInt()}.${d.toInt()}"
+    }.getOrNull()
+    return if (date != null) "$date　$ko" else ko
 }
 
 @Composable
